@@ -27,8 +27,8 @@ def type_print(text, speed=.03):
     flush_input()  # Clear any accumulated input after printing
 
 def normalize_text(text):
-    """Normalizes text by stripping whitespace and converting to lowercase."""
-    return text.strip().lower()
+    """Normalizes text by stripping whitespace and converting to uppercase."""
+    return text.strip().upper()
 
 def normalize_model(model_number):
     """Normalizes model numbers by stripping whitespace and converting to uppercase."""
@@ -56,5 +56,17 @@ def mandateStrInput(printText):
         else:
             return userInput.strip()
 
+
+def checkEmptyInfo(info):
+    """Returns 'None' for empty or missing values; otherwise returns the trimmed value."""
+    if info is None:
+        return "None"
+
+    if isinstance(info, str):
+        info = info.strip()
+        if not info:
+            return "None"
+
+    return info
 
 

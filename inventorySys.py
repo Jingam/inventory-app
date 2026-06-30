@@ -6,11 +6,12 @@ from util import *
 #==========================  Main Inventory System Class =========================
 class inventorySystem:
     typespeed = 0.02
-    def __init__(self):
+    def __init__(self, file_path='inventory_data.json'):
         self.partsList: dict[str, Parts] = {}  # Initialize an empty dictionary to hold parts in the inventory system
         self.machineList: dict[str, Machine] = {}  # Initialize an empty dictionary to hold machines in the inventory system
         self.roomList = []  # Initialize an empty list to hold rooms in the inventory system
         self.categoriesList = []  # Initialize an empty list to hold categories in the inventory system
+        self.file_path = file_path
 
 
  #==========================  Helper Functions =========================       
@@ -62,7 +63,7 @@ class inventorySystem:
     def getPartByModel(self, modelNumber):
         """Retrieves a part object from the inventory system based on its model number."""
         for part in self.partsList.values():
-            if part.modelNumber == modelNumber:
+            if part.modelNumber == normalize_text(modelNumber):
                 return part
             
         return None
@@ -71,7 +72,17 @@ class inventorySystem:
         """Retrieves general information string about a part based on its ID."""
         part = self.partsList.get(partID)
         if part:
-            print_string = (f"ID: {part.partID}, Name: {part.partName}, Model: {part.modelNumber}, Manufacturer: {part.manufacturer}, Quantity: {part.quantity}, Description: {part.partDescription}, Category: {part.category}")
+            print_string = (
+                f"ID: {checkEmptyInfo(part.partID)}, "
+                f"Name: {checkEmptyInfo(part.partName)}, "
+                f"Model: {checkEmptyInfo(part.modelNumber)}, "
+                f"Manufacturer: {checkEmptyInfo(part.manufacturer)}, "
+                f"Quantity: {checkEmptyInfo(part.quantity)}, "
+                f"Description: {checkEmptyInfo(part.partDescription)}, "
+                f"Category: {checkEmptyInfo(part.category)}, "
+                f"Location: {checkEmptyInfo(part.location)}, "
+                f"Notes: {checkEmptyInfo(part.notes)}"
+            )
             return print_string
         else:
             return "No Info Found" 
@@ -99,33 +110,79 @@ class inventorySystem:
                 results.append(part)
         return results  # Return a list of matching parts
 
-    def loadData(self):
+    def loadData(self, file_path='inventory_data.json'):
         """Loads data from the JSON file into the inventory system."""
+        self.file_path = file_path
         try:
-            with open('inventory_data.json', 'r') as file:
+            with open(file_path, 'r') as file:
                 data = json.load(file)
-                # self.partsList = data.get('partsList', {})
-                # self.machineList = data.get('machineList', {})
-                # self.roomList = data.get('roomList', [])
-                # self.categoriesList = data.get('categoriesList', [])
-                for part_data in data["parts"]:
+
+            self.partsList.clear()
+            self.machineList.clear()
+            self.roomList.clear()
+            self.categoriesList.clear()
+
+            if not isinstance(data, dict):
+                print("Invalid inventory data structure. Starting with an empty inventory.")
+                return
+
+            parts_data = data.get('parts', data.get('partsList', {}))
+            machines_data = data.get('machines', data.get('machineList', {}))
+            rooms_data = data.get('rooms', data.get('roomList', []))
+            categories_data = data.get('categories', data.get('categoriesList', []))
+
+            if isinstance(parts_data, dict):
+                for part_id, part_data in parts_data.items():
+                    part = Parts.from_dict(part_data if isinstance(part_data, dict) else {})
+                    self.partsList[part.partID or part_id] = part
+            elif isinstance(parts_data, list):
+                for part_data in parts_data:
                     part = Parts.from_dict(part_data)
                     self.partsList[part.partID] = part
+
+            if isinstance(machines_data, dict):
+                for machine_id, machine_data in machines_data.items():
+                    machine = Machine.from_dict(machine_data if isinstance(machine_data, dict) else {})
+                    self.machineList[machine.machineID or machine_id] = machine
+            elif isinstance(machines_data, list):
+                for machine_data in machines_data:
+                    machine = Machine.from_dict(machine_data)
+                    self.machineList[machine.machineID] = machine
+
+            if isinstance(rooms_data, dict):
+                for room_id, room_data in rooms_data.items():
+                    room = Room.from_dict(room_data if isinstance(room_data, dict) else {})
+                    self.roomList.append(room)
+            elif isinstance(rooms_data, list):
+                for room_data in rooms_data:
+                    room = Room.from_dict(room_data)
+                    self.roomList.append(room)
+
+            if isinstance(categories_data, dict):
+                for category_id, category_data in categories_data.items():
+                    category = categories.from_dict(category_data if isinstance(category_data, dict) else {})
+                    self.categoriesList.append(category)
+            elif isinstance(categories_data, list):
+                for category_data in categories_data:
+                    category = categories.from_dict(category_data)
+                    self.categoriesList.append(category)
+
         except FileNotFoundError:
             print("Data file not found. Starting with an empty inventory.")
         except json.JSONDecodeError:
             print("Error decoding JSON data. Starting with an empty inventory.")
 
-    def saveData(self):
+    def saveData(self, file_path='inventory_data.json'):
         """Saves data from the inventory system to the JSON file."""
+        self.file_path = file_path
         data = {
-            'partsList': self.partsList,
-            'machineList': self.machineList,
-            'roomList': self.roomList,
-            'categoriesList': self.categoriesList
+            'parts': {part_id: part.to_dict() for part_id, part in self.partsList.items()},
+            'machines': {machine_id: machine.to_dict() for machine_id, machine in self.machineList.items()},
+            'rooms': {room.roomID: room.to_dict() for room in self.roomList},
+            'categories': {category.categoryID: category.to_dict() for category in self.categoriesList},
         }
-        with open('inventory_data.json', 'w') as file:
-            json.dump(data, file)
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=2)
 
 
 #=========================  Main Operation Functions =========================
@@ -162,6 +219,7 @@ class inventorySystem:
                 specs=specs
             )
             self.partsList[new_partID] = new_part
+            self.saveData(self.file_path)
             type_print(f"Part {partName} with model number {partModel} added successfully.\n", self.typespeed)
 
 
@@ -171,24 +229,34 @@ class inventorySystem:
             if not self.partsList:
                 type_print("No parts exists in list yet, please enter part first")
                 break
+
+            type_print('Select part ID from following list')
+            self.viewPartList()
+            del_part = mandateStrInput('Enter part you wish to delete or type exit to return to menu')
+            if normalize_text(del_part) == 'EXIT':
+                break
+
+            part = self.partsList.get(del_part)
+            if part is None:
+                type_print("Part ID not found. Try again.")
+                continue
+
+            delSelect = mandateStrInput(
+                f"Are you sure you want to delete {part.partName} ({del_part})? Y/N?"
+            ).strip().upper()
+            if delSelect == 'Y':
+                self.partsList.pop(del_part, None)
+                self.saveData(self.file_path)
+                type_print(f"Part {del_part} removed.")
             else:
-                type_print('Select part ID from following list')
-                time.sleep(2)
-                self.viewPartList()
-                del_part = mandateStrInput('Enter part you wish to delete or type exit to return to menu')
-                if normalize_text(del_part) == 'exit':
-                    break
-                delSelect = mandateStrInput(f"Are you sure you want to delete {self.partsList.get(del_part)}? Y\N?") 
-                if self.partsList(del_part) and delSelect == 'Y':
-                    self.partsList.pop(del_part, None)
-                elif not delSelect == 'Y':
-
-                    
-                    
+                type_print("Deletion cancelled.")
 
 
-    def addMachine(self, machine):
-        pass
+    def addMachine(self):
+        while True:
+            machineName = mandateStrInput("Enter the name of the machine you wish to add or type exit to return to menu")
+            if 
+
 
     def removeMachine(self, machineID):
         pass

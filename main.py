@@ -77,13 +77,13 @@ Select one of the following options:
             system.addPart() 
         elif userInput.strip() == '2':
             type_print("Remove Part", typeSpeed)
-            system.removePart(system)
+            system.removePart()
         elif userInput.strip() == '3':
             type_print("View Part List", typeSpeed)
             system.viewPartList()
         elif userInput.strip() == '4':
             type_print("Update Part", typeSpeed)
-            system.updatePart(system)
+            system.updatePart()
         elif userInput.strip() == '5':
             return
         else:
@@ -116,7 +116,7 @@ def machineMenu(system):
 Select one of the following options:
 1. Add Machine 
 2. Remove Machine
-3. View Machine Part List
+3. View Machine Parts List
 4. Machine List
 5. Update Machine
 6. Back to Main Menu
@@ -125,6 +125,7 @@ Select one of the following options:
         userInput = input(">: ")
         if userInput.strip() == '1':
             type_print("Add Machine", typeSpeed)     #Can be replaced with a function call to add a machine
+            system.addMachine()
         elif userInput.strip() == '2': 
             type_print("Remove Machine", typeSpeed)  #Can be replaced with a function call to remove a machine
         elif userInput.strip() == '3':

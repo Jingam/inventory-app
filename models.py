@@ -15,6 +15,21 @@ class Parts():
     category: str  
     specs: dict = field(default_factory=dict) 
 
+    def to_dict(self):
+        """Converts the part object into a JSON-serializable dictionary."""
+        return {
+            'partID': self.partID,
+            'partName': self.partName,
+            'partDescription': self.partDescription,
+            'modelNumber': self.modelNumber,
+            'manufacturer': self.manufacturer,
+            'quantity': self.quantity,
+            'location': self.location,
+            'notes': self.notes,
+            'category': self.category,
+            'specs': self.specs,
+        }
+
     @classmethod
     def from_dict(cls, data):
         """Creates a Parts instance from a dictionary."""
@@ -40,7 +55,6 @@ class Parts():
             quantity=0
         )
 
-    @staticmethod
     def quantityUpdate(self, new_quantity):
         """Updates the quantity of the part."""
         self.quantity = new_quantity
@@ -64,15 +78,25 @@ class Machine:
     machineDescription: str
     machineLocation: str
 
+    def to_dict(self):
+        """Converts the machine object into a JSON-serializable dictionary."""
+        return {
+            'machineID': self.machineID,
+            'machineName': self.machineName,
+            'machineDescription': self.machineDescription,
+            'machineLocation': self.machineLocation,
+        }
+
     @classmethod
     def from_dict(cls, data):
         """Creates a Machine instance from a dictionary."""
         return cls(
-            machineID = data.get('machineID', ''),
-            machineName = data.get('machineName', ''),
-            machineDescription = data.get('machineDescription', ''),
-            machineDescrpition = data.get('machineDescription', '')
+            machineID=data.get('machineID', ''),
+            machineName=data.get('machineName', ''),
+            machineDescription=data.get('machineDescription', ''),
+            machineLocation=data.get('machineLocation', '')
         )
+    
 
 
 @dataclass
@@ -82,13 +106,21 @@ class Room:
     roomDescription: str
     machineList: list  # Initialize an empty list to hold machines associated with the room
 
+    def to_dict(self):
+        return {
+            'roomID': self.roomID,
+            'roomName': self.roomName,
+            'roomDescription': self.roomDescription,
+            'machineList': self.machineList,
+        }
+
     @classmethod
     def from_dict(cls, data):
         return cls(
-            roomID = data.get('roomID', ''),
-            roomName = data.get('roomName', ''),
-            roomDescription = data.get('roomDescription', ''),
-            machineList = data.get('machineList', [])
+            roomID=data.get('roomID', ''),
+            roomName=data.get('roomName', ''),
+            roomDescription=data.get('roomDescription', ''),
+            machineList=data.get('machineList', [])
         )
 
 
@@ -98,3 +130,20 @@ class categories:
     categoryName: str
     categoryDescription: str
     partList: list  # Initialize an empty list to hold parts associated with the category
+
+    def to_dict(self):
+        return {
+            'categoryID': self.categoryID,
+            'categoryName': self.categoryName,
+            'categoryDescription': self.categoryDescription,
+            'partList': self.partList,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            categoryID=data.get('categoryID', ''),
+            categoryName=data.get('categoryName', ''),
+            categoryDescription=data.get('categoryDescription', ''),
+            partList=data.get('partList', [])
+        )
