@@ -9,8 +9,8 @@ class inventorySystem:
     def __init__(self, file_path='inventory_data.json'):
         self.partsList: dict[str, Parts] = {}  # Initialize an empty dictionary to hold parts in the inventory system
         self.machineList: dict[str, Machine] = {}  # Initialize an empty dictionary to hold machines in the inventory system
-        self.roomList = []  # Initialize an empty list to hold rooms in the inventory system
-        self.categoriesList = []  # Initialize an empty list to hold categories in the inventory system
+        self.roomList: dict[str, Room] = {}  # Initialize an empty list to hold rooms in the inventory system
+        self.categoriesList: dict[str, categories] = {} # Initialize an empty list to hold categories in the inventory system
         self.file_path = file_path
 
 
@@ -60,13 +60,29 @@ class inventorySystem:
             new_number = last_number + 1
             return f"C{new_number:03d}"  # Format as P### with leading zeros
         
-    def getPartByModel(self, modelNumber):
-        """Retrieves a part object from the inventory system based on its model number."""
-        for part in self.partsList.values():
-            if part.modelNumber == normalize_text(modelNumber):
-                return part
-            
+    
+    def find_by_field(self, items: dict, field_name: str, search_value: str):
+        search_value = normalize_text(search_value)
+
+        for item in items.values():
+            item_value = getattr(item, field_name, None)
+
+            if item_value is None:
+                continue
+
+            if normalize_text(str(item_value)) == search_value:
+                return item
+
         return None
+    
+    def getPartByModel(self, modelNumber):          
+        return self.find_by_field(self.partsList, 'partModel', modelNumber)
+    
+    def getMachineByName(self, machineName):
+        return self.find_by_field(self.machineList, 'machineName', machineName)
+    
+    def getRoomByName(self, roomName):
+        return self.find_by_field(self.roomList, 'roomName', roomName)
             
     def getPartGeneralInfo(self, partID):
         """Retrieves general information string about a part based on its ID."""
@@ -109,6 +125,67 @@ class inventorySystem:
                 searchTerm.lower() in part.manufacturer.lower()):
                 results.append(part)
         return results  # Return a list of matching parts
+    
+
+    def display_rooms(self):
+        if not self.roomList:
+            print("No rooms available.")
+            return
+
+        print("\nAvailable Rooms:")
+        for room in self.roomList.values():
+            print(f"{room.roomID}: {room.roomName}")
+
+    def choose_from_dict(self, items: dict, name_field: str):
+        while True:
+            print()
+            if not items:
+                return 
+            for obj in items.values():
+                print(f"{obj.id} - {getattr(obj, name_field)}")
+
+            choice = mandateStrInput("Enter ID or name")
+            if choice == 'QUIT':
+                return choice 
+            
+            # Search by ID
+            if choice.upper() in items:
+                return items[choice.upper()]
+
+            # Search by name
+            for obj in items.values():
+                if normalize_text(getattr(obj, name_field)) == normalize_text(choice):
+                    return obj
+
+            print("Invalid selection.")
+
+    def choose_room(self):
+        return self.choose_from_dict(self.roomList, "roomName")
+    
+    def choose_machine(self):
+        return self.choose_from_dict(self.machineList, "machineName")
+    
+    def choose_part(self):
+        return self.choose_from_dict(self.partsList, "partModel")
+    
+    def choose_category(self):
+        return self.choose_from_dict(self.categoriesList, "categoryName")
+    
+    def keyword_search(self, items: dict, keyword: str, fields: list[str]):
+        keyword = normalize_text(keyword)
+        results = []
+
+        for item in items.values():
+            for field in fields:
+                value = getattr(item, field, "")
+
+                if keyword in normalize_text(str(value)):
+                    results.append(item)
+                    break
+
+        return results
+    
+    
 
     def loadData(self, file_path='inventory_data.json'):
         """Loads data from the JSON file into the inventory system."""
@@ -135,36 +212,20 @@ class inventorySystem:
                 for part_id, part_data in parts_data.items():
                     part = Parts.from_dict(part_data if isinstance(part_data, dict) else {})
                     self.partsList[part.partID or part_id] = part
-            elif isinstance(parts_data, list):
-                for part_data in parts_data:
-                    part = Parts.from_dict(part_data)
-                    self.partsList[part.partID] = part
 
             if isinstance(machines_data, dict):
                 for machine_id, machine_data in machines_data.items():
                     machine = Machine.from_dict(machine_data if isinstance(machine_data, dict) else {})
                     self.machineList[machine.machineID or machine_id] = machine
-            elif isinstance(machines_data, list):
-                for machine_data in machines_data:
-                    machine = Machine.from_dict(machine_data)
-                    self.machineList[machine.machineID] = machine
 
             if isinstance(rooms_data, dict):
                 for room_id, room_data in rooms_data.items():
                     room = Room.from_dict(room_data if isinstance(room_data, dict) else {})
                     self.roomList.append(room)
-            elif isinstance(rooms_data, list):
-                for room_data in rooms_data:
-                    room = Room.from_dict(room_data)
-                    self.roomList.append(room)
 
             if isinstance(categories_data, dict):
                 for category_id, category_data in categories_data.items():
                     category = categories.from_dict(category_data if isinstance(category_data, dict) else {})
-                    self.categoriesList.append(category)
-            elif isinstance(categories_data, list):
-                for category_data in categories_data:
-                    category = categories.from_dict(category_data)
                     self.categoriesList.append(category)
 
         except FileNotFoundError:
@@ -188,23 +249,39 @@ class inventorySystem:
 #=========================  Main Operation Functions =========================
     def addPart(self):
         """Adds a new part to the inventory system."""
-
-        partModel = normalize_text(input("Enter part model: "))
+        partModel = mandateStrInput("Enter part model:").upper()
         existingPart = self.getPartByModel(partModel)
         if existingPart:
-            type_print(f"Part with model number {existingPart.modelNumber} already exists in the inventory.", self.typespeed)
-            
+            type_print(f"Part with model number {existingPart} already exists in the inventory.", self.typespeed)
+            return
+        elif partModel == 'quit':
+            return
         else:
-            type_print(f"Adding new part with model number {partModel}.", self.typespeed)
-            new_partID = self.assignPartKey()
-            partName = mandateStrInput("Enter part name: ")
-            partDescription = input("Enter part description (optional): ").strip()
-            manufacturer = mandateStrInput("Enter part manufacturer: ")
-            quantity = validateNumInput()
-            location = input("Enter location: ").strip()
-            notes = input("Enter notes (optional): ").strip()
-            category = input("Enter category: ").strip()
-            specs = {}  # Initialize an empty dictionary for specs; can be populated later if needed
+            if userInputConfirm(f'Confirm you would like to add {partModel} to inventory: Y or N?') is False:
+                return
+            else:
+                type_print(f"Adding new part with model number {partModel}.\n", self.typespeed)
+                new_partID = self.assignPartKey()
+                partName = mandateStrInput("Enter part name:")
+                if partName is None:
+                    return
+                partDescription = optionalStrInput("Enter part description (optional):")
+                if partDescription is 'quit':
+                    return
+                manufacturer = mandateStrInput("Enter part manufacturer:")
+                if manufacturer is None:
+                    return
+                quantity = validateNumInput()
+                location = optionalStrInput("Enter location:")
+                if location == 'quit':
+                    return
+                notes = optionalStrInput("Enter notes (optional):")
+                if notes == 'quit':
+                    return
+                category = optionalStrInput("Enter category:")
+                if category == 'quit':
+                    return
+                specs = {}  # Initialize an empty dictionary for specs; can be populated later if needed
 
             new_part = Parts(
                 partID=new_partID,
@@ -228,23 +305,13 @@ class inventorySystem:
         while True:
             if not self.partsList:
                 type_print("No parts exists in list yet, please enter part first")
-                break
-
+                return
             type_print('Select part ID from following list')
-            self.viewPartList()
-            del_part = mandateStrInput('Enter part you wish to delete or type exit to return to menu')
-            if normalize_text(del_part) == 'EXIT':
-                break
+            del_part = self.choose_part()
+            if del_part is None: return
 
-            part = self.partsList.get(del_part)
-            if part is None:
-                type_print("Part ID not found. Try again.")
-                continue
-
-            delSelect = mandateStrInput(
-                f"Are you sure you want to delete {part.partName} ({del_part})? Y/N?"
-            ).strip().upper()
-            if delSelect == 'Y':
+            delSelect = userInputConfirm(f"Are you sure you want to delete {del_part}?")
+            if delSelect:
                 self.partsList.pop(del_part, None)
                 self.saveData(self.file_path)
                 type_print(f"Part {del_part} removed.")
@@ -253,13 +320,70 @@ class inventorySystem:
 
 
     def addMachine(self):
-        while True:
-            machineName = mandateStrInput("Enter the name of the machine you wish to add or type exit to return to menu")
-            if 
+            newMachineName = mandateStrInput("Enter the name of the machine you wish to add")
+            if newMachineName is None:
+                return
+            existingMachine = self.getMachineByName(newMachineName)
+            if existingMachine is not None:
+                type_print(f'Machine with name {newMachineName} already exists')
+                return
+            if userInputConfirm(f"Confirm you would like to add {newMachineName} to inventory") is False:
+                return
+            else:
+                type_print(f'Adding new machine with name {newMachineName}')
+                machineID = self.assignMachineKey()
+                machineLocation = self.choose_room()
+                if machineLocation == 'QUIT': return
+                if machineLocation is None: 
+                    type_print("No options available to choose from\n")
+                machineDescription = optionalStrInput('Enter the description of machine')
+                if machineDescription is None: return
+            
+            new_machine = Machine(
+                machineID = machineID,
+                machineName = newMachineName,
+                machineLocation = machineLocation,
+                machineDescription = machineDescription
+            )
+            self.machineList[machineID] = new_machine
+            self.saveData(self.file_path)
+            type_print(f'Machine: {newMachineName} with ID: {machineID} at {machineLocation} added sucessfully')
+            
 
 
     def removeMachine(self, machineID):
-        pass
+        while True:
+            if not self.machineList:
+                type_print("No machines exists in list yet, please add a machine first")
+                return
+            
+            type_print("Choose a list from the following:")
+            machineChoice = self.choose_machine()
+            if machineChoice is None: return
+            else:
+                delSelect = userInputConfirm(f"Are you sure you want to delete {machineChoice}?")
+                if delSelect:
+                    self.machineList.pop(machineChoice, None)
+                    self.saveData(self.file_path)
+                    type_print(f'Machine: {machineChoice} removed.')
+                else:
+                    type_print("Deletion cancelled.")
+            
+    def add_part_to_machine(self):
+        type_print("Select a part from the following to add:")
+        partChoice = self.choose_part()
+        if partChoice is None: 
+            type_print("No available parts to choose from, please add a part first")
+            return
+        type_print("Select a machine from the following to add the part to:")
+        machineChoice = self.choose_machine()
+        if machineChoice is None: return
+        confirmChoice = userInputConfirm(f"Confirm you'd like to add {partChoice} to {machineChoice}")
+        if confirmChoice is None: return 
+
+        partQuantity = validateNumInput()
+        type_print(f"Adding {partQuantity} - {partChoice} to {machineChoice}")
+        self.partsList(partChoice)
 
     def viewMachineList(self):
         """Displays the list of machines in the inventory system."""
@@ -278,3 +402,5 @@ class inventorySystem:
         print("Part List:")
         for partID in self.partsList.keys():
             type_print(self.getPartGeneralInfo(partID), typeSpeed)
+
+    

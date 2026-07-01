@@ -15,6 +15,8 @@ class Parts():
     category: str  
     specs: dict = field(default_factory=dict) 
 
+    machineID : dict = field(default_factory=str)
+
     def to_dict(self):
         """Converts the part object into a JSON-serializable dictionary."""
         return {
@@ -78,6 +80,7 @@ class Machine:
     machineDescription: str
     machineLocation: str
 
+    part_contained_ID: dict = field(default_factory = dict)
     def to_dict(self):
         """Converts the machine object into a JSON-serializable dictionary."""
         return {
@@ -104,7 +107,7 @@ class Room:
     roomID: str
     roomName: str
     roomDescription: str
-    machineList: list  # Initialize an empty list to hold machines associated with the room
+    machineList: dict = field(default_factory=str)  # Initialize an empty list to hold machines associated with the room
 
     def to_dict(self):
         return {
@@ -129,7 +132,7 @@ class categories:
     categoryID: str
     categoryName: str
     categoryDescription: str
-    partList: list  # Initialize an empty list to hold parts associated with the category
+    partList: dict = field(default_factory=str)  # Initialize an empty list to hold parts associated with the category
 
     def to_dict(self):
         return {

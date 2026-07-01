@@ -106,9 +106,32 @@ def machineMenu(system):
         """Removes a machine from the inventory system."""
         type_print("Removing a machine...", typeSpeed)
 
-    def update_machine():
+    def update_machine(system):
         """Updates the details of an existing machine in the inventory system."""
-        type_print("Updating machine details...", typeSpeed)
+        while True:
+            type_print('=' * 10 + "Update Machine Menu" + '=' * 10, typeSpeed)
+            type_print("""
+Select one of the following options:
+1. Update machine name
+2. Update machine room
+3. Update machine parts list
+4. Update machine description
+5. Return to machine menu                      
+""", typeSpeed)
+            
+            userInput = input(">: ")
+            if userInput.strip() == '1':
+                type_print("Updating machine name...")
+            elif userInput.strip() == '2':
+                type_print("Updating machine room...")
+            elif userInput.strip() == '3':
+                type_print("Updating machine parts list...")
+                system.add_part_to_machine()
+            elif userInput.strip() == '4':
+                type_print("Updating machine description...")
+            elif userInput.strip() == '5':
+                return
+            else: type_print("Invalid option please try again")
 
     while True:
         type_print('=' * 10 + "Machine Menu" + '=' * 10, typeSpeed)
@@ -128,6 +151,7 @@ Select one of the following options:
             system.addMachine()
         elif userInput.strip() == '2': 
             type_print("Remove Machine", typeSpeed)  #Can be replaced with a function call to remove a machine
+            system.remove_machine()
         elif userInput.strip() == '3':
             type_print("View Machine Part List", typeSpeed)  #Can be replaced with a function call to view the part list of a machine, needs to call a method outside scope
         elif userInput.strip() == '4':
@@ -135,6 +159,7 @@ Select one of the following options:
             system.viewMachineList()    #Needs a method to call machine list from database, needs to be global
         elif userInput.strip() == '5':
             type_print("Update Machine", typeSpeed)   #Needs a method to call machine list from database, can be local
+            update_machine(system)
         elif userInput.strip() == '6':
             return  # Exit the machine menu and return to the main menu
         else:

@@ -49,10 +49,21 @@ def validateNumInput():
     
 def mandateStrInput(printText):
     while True:
-        userInput = input(f"{printText}")
+        userInput = input(f"{printText} or enter 'quit' to exit\n>:")
         if not userInput:
-            type_print("Input field cannot be empty. Try again")
+            type_print("Input field cannot be empty. Try again\n")
             continue
+        elif normalize_text(userInput) == 'QUIT':
+            return 'QUIT'
+        else:
+            return userInput.strip()
+        
+def optionalStrInput(printText):
+    while True:
+        userInput = input(f'{printText} or enter quit to exit\n>:')
+        if not userInput: return None
+        elif normalize_text(userInput) == 'QUIT':
+            return 'quit'
         else:
             return userInput.strip()
 
@@ -68,5 +79,16 @@ def checkEmptyInfo(info):
             return "None"
 
     return info
+
+def userInputConfirm(printText):
+    while True:
+        userInput = input(f'{printText} (Enter Y or N)\n>:')
+        if userInput.upper() == 'Y':
+            return True
+        elif userInput.upper() == 'N':
+            return False
+        else:
+            type_print("Please enter 'Y' or 'N'", 0.01)
+            continue
 
 
