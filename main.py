@@ -53,7 +53,7 @@ Select one of the following options:
             break
         else:
             type_print("Invalid operation please try again", speed = 0.035)
-        
+        #
 
 def partsMenu(system):
     """Menu for managing parts in the inventory system."""

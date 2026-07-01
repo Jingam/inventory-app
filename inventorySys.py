@@ -403,4 +403,4 @@ class inventorySystem:
         for partID in self.partsList.keys():
             type_print(self.getPartGeneralInfo(partID), typeSpeed)
 
-    
+    #

@@ -1,6 +1,6 @@
 import sys
 import time
-
+#
 def flush_input():
     """Discards all accumulated user keystrokes in the buffer."""
     try:
