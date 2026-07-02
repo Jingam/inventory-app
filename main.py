@@ -29,9 +29,9 @@ def database(self):
 
 
 def mainMenu(system):
-    banner = "=" * 30 
-    print(banner + '\n' + banner + '\n' + banner)
-    type_print("  Welcome to the Main Menu", speed =.05)
+    banner = "=" * 72
+    print(banner + '\n' + banner)
+    print_header("Welcome to the Main Menu", speed = 0.005)
     while True:
         type_print("""
 Select one of the following options:
@@ -57,19 +57,20 @@ Select one of the following options:
 
 def partsMenu(system):
     """Menu for managing parts in the inventory system."""
+    headerSpeed = 0.005
     typeSpeed = .01
     slowTypeSpeed = .03
 
     while True:
-        type_print('=' * 10 + "Parts Menu" + '=' * 10, typeSpeed)
-        type_print("""
+        print_header("Parts Menu", headerSpeed)
+        print("""
 Select one of the following options:
 1. Add Part
 2. Remove Part
 3. View Part List
 4. Update Part
 5. Back to Main Menu
-""", typeSpeed)
+""")
         
         userInput = input(">: ")
         if userInput.strip() == '1':
@@ -96,8 +97,12 @@ def machineMenu(system):
 
     def display_machine_list():
         """Displays the list of machines in the inventory system."""
-        type_print("Displaying Machine List...", typeSpeed)
-    
+        type_print("Displaying Machine List...", slowTypeSpeed)
+        machineChoice = system.choose_machine()  # This will display the list of machines and allow the user to select one
+        if machineChoice is None:
+            type_print("No machine selected. Returning to machine menu.", typeSpeed)
+            return
+        else: update_machine(system, machineChoice)  # Call the update_machine function with the selected machine
     def add_machine():
         """Adds a new machine to the inventory system."""
         type_print("Adding a new machine...", typeSpeed)
@@ -106,44 +111,17 @@ def machineMenu(system):
         """Removes a machine from the inventory system."""
         type_print("Removing a machine...", typeSpeed)
 
-    def update_machine(system):
-        """Updates the details of an existing machine in the inventory system."""
-        while True:
-            type_print('=' * 10 + "Update Machine Menu" + '=' * 10, typeSpeed)
-            type_print("""
-Select one of the following options:
-1. Update machine name
-2. Update machine room
-3. Update machine parts list
-4. Update machine description
-5. Return to machine menu                      
-""", typeSpeed)
-            
-            userInput = input(">: ")
-            if userInput.strip() == '1':
-                type_print("Updating machine name...")
-            elif userInput.strip() == '2':
-                type_print("Updating machine room...")
-            elif userInput.strip() == '3':
-                type_print("Updating machine parts list...")
-                system.add_part_to_machine()
-            elif userInput.strip() == '4':
-                type_print("Updating machine description...")
-            elif userInput.strip() == '5':
-                return
-            else: type_print("Invalid option please try again")
 
     while True:
         type_print('=' * 10 + "Machine Menu" + '=' * 10, typeSpeed)
-        type_print("""
+        print("""
 Select one of the following options:
 1. Add Machine 
 2. Remove Machine
-3. View Machine Parts List
-4. Machine List
-5. Update Machine
-6. Back to Main Menu
-""", typeSpeed)
+3. Machine List
+4. Update Machine
+5. Back to Main Menu
+""")
         
         userInput = input(">: ")
         if userInput.strip() == '1':
@@ -153,18 +131,51 @@ Select one of the following options:
             type_print("Remove Machine", typeSpeed)  #Can be replaced with a function call to remove a machine
             system.remove_machine()
         elif userInput.strip() == '3':
-            type_print("View Machine Part List", typeSpeed)  #Can be replaced with a function call to view the part list of a machine, needs to call a method outside scope
-        elif userInput.strip() == '4':
             type_print("Machine List:", typeSpeed)
             system.viewMachineList()    #Needs a method to call machine list from database, needs to be global
-        elif userInput.strip() == '5':
+        elif userInput.strip() == '4':
             type_print("Update Machine", typeSpeed)   #Needs a method to call machine list from database, can be local
-            update_machine(system)
-        elif userInput.strip() == '6':
+            choose_machine = system.choose_machine()
+            if choose_machine is None:
+                type_print("No machine selected. Returning to machine menu.", typeSpeed)
+                continue
+            update_machine(system, choose_machine)
+        elif userInput.strip() == '5':
             return  # Exit the machine menu and return to the main menu
         else:
             type_print("Invalid operation please try again", typeSpeed)
 
+    def update_machine(system, machineChoice):
+        """Updates the details of an existing machine in the inventory system."""
+        while True:
+            type_print('=' * 10 + "Update Machine Menu" + '=' * 10, typeSpeed)
+            print("""
+Select one of the following options:
+1. Update machine name
+2. Update machine room
+3. Update machine parts list
+4. Update machine description
+5. View machine part list
+5. Return to machine menu                      
+""")
+            
+            userInput = input(">: ")
+            if userInput.strip() == '1':
+                type_print("Updating machine name...")
+            elif userInput.strip() == '2':
+                type_print("Updating machine room...")
+            elif userInput.strip() == '3':
+                type_print("Updating machine parts list...")
+                system.add_part_to_machine(machineChoice)
+            elif userInput.strip() == '4':
+                type_print("Updating machine description...")
+            elif userInput.strip() == '5':
+                type_print("Viewing machine part list...")
+                print(machineChoice.partTable(system.partsList))
+                input("Press Enter to return to the update machine menu...")
+            elif userInput.strip() == '6':
+                return  # Exit the update machine menu and return to the machine menu
+            else: type_print("Invalid option please try again")
 
 
 def reportMenu():

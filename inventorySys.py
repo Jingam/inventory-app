@@ -1,5 +1,7 @@
 import json
 from json.tool import main
+
+from prompt_toolkit import choice
 from models import *
 from util import *
 
@@ -136,40 +138,45 @@ class inventorySystem:
         for room in self.roomList.values():
             print(f"{room.roomID}: {room.roomName}")
 
-    def choose_from_dict(self, items: dict, name_field: str):
-        while True:
-            print()
-            if not items:
-                return 
-            for obj in items.values():
-                print(f"{obj.id} - {getattr(obj, name_field)}")
+    def choose_from_dict(self, data_dict, id_field, name_field):
+        """Lets the user choose an object from a dictionary."""
 
-            choice = mandateStrInput("Enter ID or name")
-            if choice == 'QUIT':
-                return choice 
-            
-            # Search by ID
-            if choice.upper() in items:
-                return items[choice.upper()]
+        if not data_dict:
+            print("No items found.")
+            return None
 
-            # Search by name
-            for obj in items.values():
-                if normalize_text(getattr(obj, name_field)) == normalize_text(choice):
-                    return obj
+        items = list(data_dict.values())
 
-            print("Invalid selection.")
+        for index, obj in enumerate(items, start=1):
+            obj_id = getattr(obj, id_field)
+            obj_name = getattr(obj, name_field)
+            print(f"{index}. {obj_id} - {obj_name}")
+
+        choice = input("Choose an item number: ")
+
+        if not choice.isdigit():
+            print("Invalid choice.")
+            return None
+
+        choice = int(choice)
+
+        if choice < 1 or choice > len(items):
+            print("Choice out of range.")
+            return None
+
+        return items[choice - 1]
 
     def choose_room(self):
-        return self.choose_from_dict(self.roomList, "roomName")
+        return self.choose_from_dict(self.roomList, "roomID", "roomName")
     
     def choose_machine(self):
-        return self.choose_from_dict(self.machineList, "machineName")
+        return self.choose_from_dict(self.machineList, "machineID", "machineName")
     
     def choose_part(self):
-        return self.choose_from_dict(self.partsList, "partModel")
+        return self.choose_from_dict(self.partsList, "partID", "modelNumber")
     
     def choose_category(self):
-        return self.choose_from_dict(self.categoriesList, "categoryName")
+        return self.choose_from_dict(self.categoriesList, "categoryID", "categoryName")
     
     def keyword_search(self, items: dict, keyword: str, fields: list[str]):
         keyword = normalize_text(keyword)
@@ -318,6 +325,31 @@ class inventorySystem:
             else:
                 type_print("Deletion cancelled.")
 
+    def updatePart(self):
+        """Update part information in the inventory system."""
+        while True:
+            if not self.partsList:
+                type_print("No parts exists in list yet, please enter part first")
+                return
+            type_print('Select part ID from following list')
+            update_part = self.choose_part()
+            if update_part is None: return
+
+            type_print(f"Updating part {update_part}. Please enter new values or leave blank to keep current value.")
+            part = self.partsList[update_part]
+
+            new_name = optionalStrInput(f"Enter new name (current: {part.partName}):")
+            if new_name is not None:
+                part.partName = new_name
+
+            new_description = optionalStrInput(f"Enter new description (current: {part.partDescription}):")
+            if new_description is not None:
+                part.partDescription = new_description
+
+            new_manufacturer = optionalStrInput(f"Enter new manufacturer (current: {part.manufacturer}):")
+            if new_manufacturer is not None:
+                return # placeholder
+
 
     def addMachine(self):
             newMachineName = mandateStrInput("Enter the name of the machine you wish to add")
@@ -369,21 +401,19 @@ class inventorySystem:
                 else:
                     type_print("Deletion cancelled.")
             
-    def add_part_to_machine(self):
+    def add_part_to_machine(self, machineChoice):
         type_print("Select a part from the following to add:")
         partChoice = self.choose_part()
         if partChoice is None: 
             type_print("No available parts to choose from, please add a part first")
             return
-        type_print("Select a machine from the following to add the part to:")
-        machineChoice = self.choose_machine()
-        if machineChoice is None: return
-        confirmChoice = userInputConfirm(f"Confirm you'd like to add {partChoice} to {machineChoice}")
+        
+        confirmChoice = userInputConfirm(f"Confirm you'd like to add {partChoice.modelNumber} to {machineChoice.machineName}?")
         if confirmChoice is None: return 
-
-        partQuantity = validateNumInput()
-        type_print(f"Adding {partQuantity} - {partChoice} to {machineChoice}")
-        self.partsList(partChoice)
+        else:
+            partQuantity = validateNumInput()
+            type_print(f"Adding {partQuantity} - {partChoice.modelNumber} to {machineChoice.machineName}")
+            machineChoice.part_contained_ID[partChoice.partID] = partQuantity
 
     def viewMachineList(self):
         """Displays the list of machines in the inventory system."""
@@ -394,13 +424,3 @@ class inventorySystem:
         for machineID, machine in self.machineList.items():
             print(f"ID: {machineID}, Name: {machine.machineName}, Description: {machine.machineDescription}, Location: {machine.machineLocation}")
 
-    def viewPartList(self, typeSpeed=0.03):
-        """Displays the list of parts in the inventory system."""
-        if not self.partsList:
-            type_print(f"No parts in the inventory.", typeSpeed)
-            return
-        print("Part List:")
-        for partID in self.partsList.keys():
-            type_print(self.getPartGeneralInfo(partID), typeSpeed)
-
-    #

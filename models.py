@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from util import *
 
-#
 @dataclass
 class Parts():
     partID: str
@@ -51,8 +50,10 @@ class Parts():
     @classmethod
     def create_empty(cls):
         return cls(
-            part_id=None,
-            model="",
+            partID=None,
+            partName="",
+            partDescription="",
+            modelNumber="",
             manufacturer="",
             quantity=0
         )
@@ -100,6 +101,36 @@ class Machine:
             machineLocation=data.get('machineLocation', '')
         )
     
+    def partTable(self, partsList):
+        """Returns a string table showing each part model and quantity in this machine."""
+
+        if not self.part_contained_ID:
+            return "No parts assigned to this machine."
+
+        lines = []
+
+        header = f"{'Part Model':<20} {'Quantity':>10}"
+        separator = "-" * len(header)
+
+        lines.append(header)
+        lines.append(separator)
+
+        for partID, quantity in self.part_contained_ID.items():
+            part = None
+
+            for p in partsList.values():
+                if p.partID == partID:
+                    part = p
+                    break
+
+            if part is not None:
+                model = part.modelNumber
+            else:
+                model = f"Unknown Part ID {partID}"
+
+            lines.append(f"{model:<20} {quantity:>10}")
+
+        return "\n".join(lines)
 
 
 @dataclass

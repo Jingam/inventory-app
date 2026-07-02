@@ -1,5 +1,6 @@
 import sys
 import time
+from typing import List, Optional
 #
 def flush_input():
     """Discards all accumulated user keystrokes in the buffer."""
@@ -91,4 +92,28 @@ def userInputConfirm(printText):
             type_print("Please enter 'Y' or 'N'", 0.01)
             continue
 
+
+def print_header(title: str, speed: float = 0.01) -> None:
+    type_print("\n" + "=" * 72, speed)
+    type_print(title, speed)
+    type_print("=" * 72, speed)
+
+
+def print_table(headers: List[str], rows: List[List[str]]) -> None:
+    if not rows:
+        print("No records found.")
+        return
+
+    widths = [len(header) for header in headers]
+    for row in rows:
+        for i, cell in enumerate(row):
+            widths[i] = max(widths[i], len(str(cell)))
+
+    header_line = " | ".join(headers[i].ljust(widths[i]) for i in range(len(headers)))
+    divider = "-+-".join("-" * widths[i] for i in range(len(headers)))
+
+    print(header_line)
+    print(divider)
+    for row in rows:
+        print(" | ".join(str(row[i]).ljust(widths[i]) for i in range(len(headers))))
 
