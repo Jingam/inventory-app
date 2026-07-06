@@ -1,4 +1,5 @@
 from ast import mod
+from os import system
 import sys
 import time
 #import threading - Not used yet
@@ -29,16 +30,15 @@ def database(self):
 
 
 def mainMenu(system):
-    banner = "=" * 72
-    print(banner + '\n' + banner)
-    print_header("Welcome to the Main Menu", speed = 0.005)
+    print_header("Welcome to the Main Menu")
     while True:
         type_print("""
 Select one of the following options:
 1. Machine Menu
 2. Parts Menu
 3. Reports Menu
-4. Exit
+4. Room Menu
+5. Exit
 """, speed = 0.01)
         userInput = input(">: ")
         if userInput.strip() == '1':
@@ -48,6 +48,8 @@ Select one of the following options:
         elif userInput.strip() == '3':
             reportMenu()
         elif userInput.strip() == '4':
+            roomMenu(system)
+        elif userInput.strip() == '5':
             type_print('Goodbye', 0.08)
             time.sleep(1.5)
             break
@@ -62,7 +64,7 @@ def partsMenu(system):
     slowTypeSpeed = .03
 
     while True:
-        print_header("Parts Menu", headerSpeed)
+        print_header("Parts Menu")
         print("""
 Select one of the following options:
 1. Add Part
@@ -122,10 +124,18 @@ Select one of the following options:
             system.addMachine()
         elif userInput.strip() == '2': 
             type_print("Remove Machine", typeSpeed)  #Can be replaced with a function call to remove a machine
-            system.remove_machine()
+            system.removeMachine()
         elif userInput.strip() == '3':
             type_print("Machine List:", typeSpeed)
             system.viewMachineList()    #Needs a method to call machine list from database, needs to be global
+            userChoice = userInputConfirm("Would you like to update a machine? (Y/N)")
+            if userChoice:
+                machineChoice = system.choose_machine()
+                if machineChoice is None:
+                    type_print("No machine selected. Returning to machine menu.", typeSpeed)
+                    return
+                update_machine_menu(system, machineChoice)
+       
         elif userInput.strip() == '4':
             type_print("Update Machine", typeSpeed)   #Needs a method to call machine list from database, can be local
             choose_machine = system.choose_machine()
@@ -139,10 +149,10 @@ Select one of the following options:
             type_print("Invalid operation please try again", typeSpeed)
 
 def update_machine_menu(system, machineChoice):
-        """Updates the details of an existing machine in the inventory system."""
-        while True:
-            print_header(f"Update Machine: {machineChoice.machineName}", speed=0.005)
-            print("""
+    """Updates the details of an existing machine in the inventory system."""
+    while True:
+        print_header(f"Update Machine: {machineChoice.machineName}")
+        print("""
 Select one of the following options:
 1. Update machine name
 2. Update machine room
@@ -152,34 +162,158 @@ Select one of the following options:
 6. Return to machine menu                      
 """)
             
-            userInput = input(">: ")
-            if userInput.strip() == '1':
-                type_print("Updating machine name...")
-            elif userInput.strip() == '2':
-                type_print("Updating machine room...")
-            elif userInput.strip() == '3':
+        userInput = input(">: ")
+        if userInput.strip() == '1':
+            newName = optionalStrInput("Enter new machine name")
+            if newName == 'quit':
+                type_print("Returning to update machine menu...")
+            else:
+                machineChoice.updateName(newName)
+                system.saveData(system.file_path)
+                type_print(f"Machine name updated to: {newName}")
+        elif userInput.strip() == '2':
+            newRoom = system.choose_room()
+            if newRoom is None:
+                type_print("No room selected. Returning to update machine menu...")
+            elif newRoom == 'quit':
+                type_print("Returning to update machine menu...")
+            else:
+                system.updateRoom(machineChoice.machineID, newRoom.roomID)
+                system.saveData(system.file_path)
+                type_print(f"Machine room updated to: {newRoom.roomName}")
+        elif userInput.strip() == '3':
                 type_print("Updating machine parts list...")
                 system.add_part_to_machine(machineChoice)
-            elif userInput.strip() == '4':
-                type_print("Updating machine description...")
-            elif userInput.strip() == '5':
-                type_print("Viewing machine part list...")
-                print(machineChoice.partTable(system.partsList))
-                input("Press Enter to return to the update machine menu...")
-            elif userInput.strip() == '6':
-                return  # Exit the update machine menu and return to the machine menu
-            else: 
-                type_print("Invalid option please try again")
+        elif userInput.strip() == '4':
+                newDescription = optionalStrInput("Enter new machine description")
+                if newDescription == 'quit':
+                    type_print("Returning to update machine menu...")
+                else:
+                    machineChoice.updateDescription(newDescription)
+                    system.saveData(system.file_path)
+                    type_print(f"Machine description updated to: {newDescription}")
+        elif userInput.strip() == '5':
+            type_print("Viewing machine part list...")
+            print(machineChoice.partTable(system.partsList))
+            input("Press Enter to return to the update machine menu...")
+        elif userInput.strip() == '6':
+            return  # Exit the update machine menu and return to the machine menu
+        else: 
+            type_print("Invalid option please try again")
 
 def reportMenu():
     print("Report Menu")
 
-def roomMenu():
-    print("Room Menu")
+def roomMenu(system):
+    while True:
+        print_header("Room Menu")
+        print("""
+Select one of the following options:
+1. Add Room
+2. Remove Room
+3. View Room List
+4. Update Room
+5. Back to Main Menu
+""")
+        userInput = input(">: ")
+
+        if userInput.strip() == '1':
+            print_header("Add Room")
+            system.addRoom()
+
+        elif userInput.strip() == '2':
+            print_header("Remove Room")
+            roomChoice = system.choose_room()
+            if roomChoice is None:
+                type_print("No room selected. Returning to room menu.")
+                return
+            else:
+                system.removeRoom(roomChoice.roomID)
+
+        elif userInput.strip() == '3':
+            print_header("View Room List")
+            system.viewRoomList()
+            if not system.roomList:
+                type_print("No rooms available. Returning to room menu.")
+                return
+            userChoice = userInputConfirm("Would you like to update a room? (Y/N)")
+            if userChoice:
+                roomChoice = system.choose_room()
+                if roomChoice is None:
+                    type_print("No room selected. Returning to room menu.")
+                    return
+                else:
+                    update_room_menu(system, roomChoice)
+
+        elif userInput.strip() == '4':
+            print_header("Update Room")
+            roomChoice = system.choose_room()
+            if roomChoice is None:
+                type_print("No room selected. Returning to room menu.")
+                return
+            else:
+                update_room_menu(system, roomChoice)
+
+        elif userInput.strip() == '5':
+            return  # Exit the room menu and return to the main menu
+        
+        else:
+            type_print("Invalid operation please try again")
+
+
+def update_room_menu(system, roomChoice):
+    """Updates the details of an existing room in the inventory system."""
+    while True:
+        print_header(f"Update Room: {roomChoice.roomName}")
+        print("""
+Select one of the following options:
+1. Update room name
+2. Update room description
+3. View room machine list
+4. Update room machine list
+5. Return to room menu
+6. Back to Main Menu
+""")
+        userInput = input(">: ")
+        if userInput.strip() == '1':
+            print("Update room name")
+            roomChoice.updateName(mandateStrInput("Enter new room name"))
+        elif userInput.strip() == '2':
+            print("Update room description")
+            roomChoice.updateDescription(mandateStrInput("Enter new room description"))
+        elif userInput.strip() == '3':
+            print("View room's machine list")
+            roomChoice.machineTable()
+            userChoice = userInputConfirm("Would you like to update a machine in this room? (Y/N)")
+            if userChoice:
+                machineChoice = system.choose_machine()
+                if machineChoice is None:
+                    type_print("No machine selected. Returning to update room menu...")
+                else:
+                    update_machine_menu(system, machineChoice)
+        elif userInput.strip() == '4':
+            print("Update room machine list")
+            machineChoice = system.choose_machine()
+            if machineChoice is None:
+                type_print("No machine selected. Returning to update room menu...")
+            else:
+                system.updateRoom(machineChoice.machineID, roomChoice.roomID)
+                type_print(f"Machine {machineChoice.machineName} has been moved to room {roomChoice.roomName}.")
+        elif userInput.strip() == '5':
+            return  # Exit the update room menu and return to the room menu
+        elif userInput.strip() == '6':
+            return  # Exit the update room menu and return to the main menu
+        else:
+            print("Invalid operation please try again")
+
+
+
 
 def specMenu():
     pass
 
+
+#=========================  Category Menu Functions =========================
 
 def categoriesMenu():
     print_header("Categories Menu")
@@ -200,6 +334,7 @@ Select one of the following options:
         system.removeCategory()
     elif userInput.strip() == '3':
         print("View Category List")
+        system.display_categories()
     elif userInput.strip() == '4':
         print("Update Category")
     elif userInput.strip() == '5':

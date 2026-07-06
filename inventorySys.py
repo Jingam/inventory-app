@@ -194,7 +194,9 @@ class inventorySystem:
 
         return results
     
-    
+
+#=========================  Data Persistence Functions =========================
+
 
     def loadData(self, file_path='inventory_data.json'):
         """Loads data from the JSON file into the inventory system."""
@@ -230,7 +232,7 @@ class inventorySystem:
             if isinstance(rooms_data, dict):
                 for room_id, room_data in rooms_data.items():
                     room = Room.from_dict(room_data if isinstance(room_data, dict) else {})
-                    self.roomList.append(room)
+                    self.roomList[room.roomID or room_id] = room
 
             if isinstance(categories_data, dict):
                 for category_id, category_data in categories_data.items():
@@ -248,8 +250,8 @@ class inventorySystem:
         data = {
             'parts': {part_id: part.to_dict() for part_id, part in self.partsList.items()},
             'machines': {machine_id: machine.to_dict() for machine_id, machine in self.machineList.items()},
-            'rooms': {room.roomID: room.to_dict() for room in self.roomList},
-            'categories': {category.categoryID: category.to_dict() for category in self.categoriesList},
+            'rooms': {room_id: room.to_dict() for room_id, room in self.roomList.items()},
+            'categories': {cat_id: cat.to_dict() for cat_id, cat in self.categoriesList.items()},
         }
         with open(file_path, 'w') as file:
             json.dump(data, file, indent=2)
@@ -319,11 +321,11 @@ class inventorySystem:
             del_part = self.choose_part()
             if del_part is None: return
 
-            delSelect = userInputConfirm(f"Are you sure you want to delete {del_part}?")
+            delSelect = userInputConfirm(f"Are you sure you want to delete {del_part.modelNumber}?")
             if delSelect:
-                self.partsList.pop(del_part, None)
+                self.partsList.pop(del_part.partID, None)
                 self.saveData(self.file_path)
-                type_print(f"Part {del_part} removed.")
+                type_print(f"Part {del_part.modelNumber} removed.")
             else:
                 type_print("Deletion cancelled.")
             self.saveData(self.file_path)
@@ -353,6 +355,36 @@ class inventorySystem:
             if new_manufacturer is not None:
                 part.manufacturer = new_manufacturer
             self.saveData(self.file_path)
+
+    def viewPartListTable(self, partsList):
+        """Returns a string table showing each part model and quantity"""
+        if not self.partsList:
+            type_print("No parts in the inventory.\n", self.typespeed)
+            return
+        lines = []
+
+        header = f"{'Part Model':<20} {'Quantity':>10}"
+        separator = "-" * len(header)
+
+        lines.append(header)
+        lines.append(separator)
+
+        for partID, quantity in self.partsList.items():
+            part = None
+
+            for p in partsList.values():
+                if p.partID == partID:
+                    part = p
+                    break
+
+            if part is not None:
+                model = part.modelNumber
+            else:
+                model = f"Unknown Part ID {partID}"
+            
+            lines.append(f"{model:<20} {quantity:>10}")
+
+        return "\n".join(lines)
 
 #==========================  Machine Operation Functions =========================
 
@@ -389,7 +421,7 @@ class inventorySystem:
             
 
 
-    def removeMachine(self, machineID):
+    def removeMachine(self):
         while True:
             if not self.machineList:
                 type_print("No machines exists in list yet, please add a machine first")
@@ -413,26 +445,92 @@ class inventorySystem:
         if partChoice is None: 
             type_print("No available parts to choose from, please add a part first")
             return
-        
+        elif partChoice.partID in machineChoice.part_contained_ID:
+            type_print(f"{partChoice.modelNumber} is already assigned to {machineChoice.machineName}.")
+            return
         confirmChoice = userInputConfirm(f"Confirm you'd like to add {partChoice.modelNumber} to {machineChoice.machineName}?")
         if confirmChoice is None: return 
         else:
             partQuantity = validateNumInput()
             type_print(f"Adding {partQuantity} - {partChoice.modelNumber} to {machineChoice.machineName}")
+            if partChoice.usedQuantity == 0:
+                partChoice.usedQuantityUpdate(partQuantity)
+            else:
+                partChoice.usedQuantityUpdate(partChoice.usedQuantity + partQuantity)
             machineChoice.part_contained_ID[partChoice.partID] = partQuantity
         self.saveData(self.file_path)
+
+
     def viewMachineList(self):
         """Displays the list of machines in the inventory system."""
         if not self.machineList:
             type_print("No machines in the inventory.\n", self.typespeed)
             return
         for machineID, machine in self.machineList.items():
-            print(f"ID: {machineID}, Name: {machine.machineName}, Description: {machine.machineDescription}, Room Location: {machine.machineLocation}")
+            print(f"ID: {machineID}, Name: {machine.machineName}, Description: {machine.machineDescription}, Room Location: {machine.machineLocation}, Part Count: {len(machine.part_contained_ID)}")
         pause_for_user()
 
-
-
+    
 #=========================  Room Operation Functions =========================
+
+    def addRoom(self):
+        """Adds a new room to the inventory system."""
+        newRoomName = mandateStrInput("Enter the name of the room you wish to add")
+        if newRoomName is None:
+            return
+        existingRoom = self.getRoomByName(newRoomName)
+        if existingRoom is not None:
+            type_print(f'Room with name {newRoomName} already exists')
+            return
+        if userInputConfirm(f"Confirm you would like to add {newRoomName} to inventory") is False:
+            return
+        else:
+            type_print(f'Adding new room with name {newRoomName}')
+            newRoomID = self.assignRoomKey()
+            newRoomDescription = optionalStrInput('Enter the description of room')
+            
+        new_room = Room(
+            roomID = newRoomID,
+            roomName = newRoomName,
+            roomDescription = newRoomDescription
+        )
+        self.roomList[newRoomID] = new_room
+        self.saveData(self.file_path)
+        type_print(f'Room: {newRoomName} with ID: { newRoomID} added sucessfully')
+
+    def removeRoom(self, roomChoice):
+        if not self.roomList:
+            type_print("No rooms exists in list yet, please add a room first")
+            return
+            
+        if roomChoice is None: return
+        else:
+            delSelect = userInputConfirm(f"Are you sure you want to delete {roomChoice}?")
+            if delSelect:
+                self.roomList.pop(roomChoice, None)
+                self.saveData(self.file_path)
+                type_print(f'Room: {roomChoice} removed.')
+            else:
+                type_print("Deletion cancelled.")
+
+    def updateRoom(self, machineID, new_room):
+        """Updates the room of a specific machine in the inventory system."""
+        if machineID in self.machineList:
+            self.machineList[machineID].machineLocation = new_room
+        else:
+            type_print(f"Machine ID {machineID} not found in the inventory.")
+
+    def viewRoomList(self):
+        """Displays the list of rooms in the inventory system."""
+        if not self.roomList:
+            type_print("No rooms in the inventory.\n", self.typespeed)
+            return
+        for roomID, room in self.roomList.items():
+            for machineID, machine in self.machineList.items():
+                if machine.machineLocation == room.roomName:
+                    room.machine_contained[machineID] = machine
+            print(f"ID: {roomID}, Name: {room.roomName}, Description: {room.roomDescription}, Machine Contained: {', '.join(room.machine_contained.keys()) if room.machine_contained else 'None'}")
+        pause_for_user()
 
 
 

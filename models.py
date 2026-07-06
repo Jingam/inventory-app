@@ -9,6 +9,7 @@ class Parts():
     modelNumber: str 
     manufacturer: str  
     quantity: int
+    usedQuantity: int
     location: str  
     notes: str  
     category: str  
@@ -24,10 +25,12 @@ class Parts():
             'modelNumber': self.modelNumber,
             'manufacturer': self.manufacturer,
             'quantity': self.quantity,
+            'usedQuantity': self.usedQuantity,
             'location': self.location,
             'notes': self.notes,
             'category': self.category,
             'specs': self.specs,
+            'machineID': self.machineID
         }
 
     @classmethod
@@ -40,10 +43,12 @@ class Parts():
             modelNumber=data.get('modelNumber', ''),
             manufacturer=data.get('manufacturer', ''),
             quantity=data.get('quantity', 0),
+            usedQuantity=data.get('usedQuantity', 0),
             location=data.get('location', ''),
             notes=data.get('notes', ''),
             category=data.get('category', ''),
-            specs=data.get('specs', {})
+            specs=data.get('specs', {}),
+            machineID=data.get('machineID', {})
         )
 
     @classmethod
@@ -60,6 +65,10 @@ class Parts():
     def quantityUpdate(self, new_quantity):
         """Updates the quantity of the part."""
         self.quantity = new_quantity
+
+    def usedQuantityUpdate(self, new_used_quantity):
+        """Updates the used quantity of the part."""
+        self.usedQuantity = new_used_quantity
 
     def descriptionUpdate(self, new_description):
         """Updates the description of the part."""
@@ -116,6 +125,7 @@ class Machine:
             'machineName': self.machineName,
             'machineDescription': self.machineDescription,
             'machineLocation': self.machineLocation,
+            'part_contained_ID': self.part_contained_ID
         }
 
     @classmethod
@@ -125,7 +135,8 @@ class Machine:
             machineID=data.get('machineID', ''),
             machineName=data.get('machineName', ''),
             machineDescription=data.get('machineDescription', ''),
-            machineLocation=data.get('machineLocation', '')
+            machineLocation=data.get('machineLocation', ''),
+            part_contained_ID=data.get('part_contained_ID', {})
         )
     
     def partTable(self, partsList):
@@ -159,6 +170,7 @@ class Machine:
 
         return "\n".join(lines)
     
+    
     def updatePartQuantity(self, partID, new_quantity):
         """Updates the quantity of a specific part in the machine."""
         if partID in self.part_contained_ID:
@@ -185,14 +197,14 @@ class Room:
     roomID: str
     roomName: str
     roomDescription: str
-    machineList: dict = field(default_factory=str)  # Initialize an empty list to hold machines associated with the room
+    machine_contained: dict = field(default_factory=str)  # Initialize an empty list to hold machines associated with the room
 
     def to_dict(self):
         return {
             'roomID': self.roomID,
             'roomName': self.roomName,
             'roomDescription': self.roomDescription,
-            'machineList': self.machineList,
+            'machine_contained': self.machine_contained,
         }
 
     @classmethod
@@ -201,7 +213,7 @@ class Room:
             roomID=data.get('roomID', ''),
             roomName=data.get('roomName', ''),
             roomDescription=data.get('roomDescription', ''),
-            machineList=data.get('machineList', [])
+            machine_contained=data.get('machine_contained', {})
         )
 
     def updateName(self, new_name):
@@ -209,6 +221,24 @@ class Room:
 
     def updateDescription(self, new_description):
         self.roomDescription = new_description
+
+    def machineTable(self):
+        """Returns a string table showing each machine in this room."""
+        if not self.machine_contained:
+            return "No machines assigned to this room."
+
+        lines = []
+
+        header = f"{'Machine ID':<20} {'Machine Name':<30} {'Description':<30}"
+        separator = "-" * len(header)
+
+        lines.append(header)
+        lines.append(separator)
+
+        for machineID, machine in self.machine_contained.items():
+            lines.append(f"{machineID:<20} {machine.machineName:<30} {machine.machineDescription:<30}")
+
+        return "\n".join(lines)
 
 
 @dataclass
@@ -241,4 +271,4 @@ class categories:
     def updateDescription(self, new_description):
         self.categoryDescription = new_description
 
-    def update
+    
