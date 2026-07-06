@@ -13,7 +13,6 @@ class Parts():
     notes: str  
     category: str  
     specs: dict = field(default_factory=dict) 
-
     machineID : dict = field(default_factory=str)
 
     def to_dict(self):
@@ -61,6 +60,34 @@ class Parts():
     def quantityUpdate(self, new_quantity):
         """Updates the quantity of the part."""
         self.quantity = new_quantity
+
+    def descriptionUpdate(self, new_description):
+        """Updates the description of the part."""
+        self.partDescription = new_description
+    
+    def nameUpdate(self, new_name):
+        """Updates the name of the part."""
+        self.partName = new_name
+
+    def modelUpdate(self, new_model):
+        """Updates the model number of the part."""
+        self.modelNumber = new_model
+
+    def manufacturerUpdate(self, new_manufacturer):
+        """Updates the manufacturer of the part."""
+        self.manufacturer = new_manufacturer
+
+    def locationUpdate(self, new_location):
+        """Updates the location of the part."""
+        self.location = new_location
+
+    def notesUpdate(self, new_notes):
+        """Updates the notes of the part."""
+        self.notes = new_notes  
+
+    def categoryUpdate(self, new_category):
+        """Updates the category of the part."""
+        self.category = new_category
     
     @staticmethod
     def isStockLow(self, threshold):
@@ -131,6 +158,26 @@ class Machine:
             lines.append(f"{model:<20} {quantity:>10}")
 
         return "\n".join(lines)
+    
+    def updatePartQuantity(self, partID, new_quantity):
+        """Updates the quantity of a specific part in the machine."""
+        if partID in self.part_contained_ID:
+            self.part_contained_ID[partID] = new_quantity
+        else:
+            type_print(f"Part ID {partID} not found in this machine.")
+
+    def updateName(self, new_name):
+        """Updates the name of the machine."""
+        self.machineName = new_name
+
+    def updateDescription(self, new_description):
+        """Updates the description of the machine."""
+        self.machineDescription = new_description
+
+    def updateLocation(self, new_location):
+        """Updates the location of the machine."""
+        self.machineLocation = new_location
+
 
 
 @dataclass
@@ -157,20 +204,26 @@ class Room:
             machineList=data.get('machineList', [])
         )
 
+    def updateName(self, new_name):
+        self.roomName = new_name
+
+    def updateDescription(self, new_description):
+        self.roomDescription = new_description
+
 
 @dataclass
 class categories:
     categoryID: str
     categoryName: str
     categoryDescription: str
-    partList: dict = field(default_factory=str)  # Initialize an empty list to hold parts associated with the category
+    specList = []
 
     def to_dict(self):
         return {
             'categoryID': self.categoryID,
             'categoryName': self.categoryName,
             'categoryDescription': self.categoryDescription,
-            'partList': self.partList,
+            'specList': self.specList,
         }
 
     @classmethod
@@ -179,5 +232,13 @@ class categories:
             categoryID=data.get('categoryID', ''),
             categoryName=data.get('categoryName', ''),
             categoryDescription=data.get('categoryDescription', ''),
-            partList=data.get('partList', [])
+            specList=data.get('specList', [])
         )
+    
+    def updateName(self, new_name):
+        self.categoryName = new_name
+
+    def updateDescription(self, new_description):
+        self.categoryDescription = new_description
+
+    def update

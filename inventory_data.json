@@ -1,0 +1,19 @@
+{
+  "parts": {},
+  "machines": {
+    "M001": {
+      "machineID": "M001",
+      "machineName": "VD 3",
+      "machineDescription": "awd",
+      "machineLocation": null
+    },
+    "M002": {
+      "machineID": "M002",
+      "machineName": "VD 2",
+      "machineDescription": "Vaccum Dryer #3",
+      "machineLocation": null
+    }
+  },
+  "rooms": {},
+  "categories": {}
+}

@@ -1,7 +1,6 @@
 import json
 from json.tool import main
 
-from prompt_toolkit import choice
 from models import *
 from util import *
 
@@ -85,6 +84,9 @@ class inventorySystem:
     
     def getRoomByName(self, roomName):
         return self.find_by_field(self.roomList, 'roomName', roomName)
+    
+    def getCategoryByName(self, categoryName):
+        return self.find_by_field(self.categoriesList, 'categoryName', categoryName)
             
     def getPartGeneralInfo(self, partID):
         """Retrieves general information string about a part based on its ID."""
@@ -253,7 +255,7 @@ class inventorySystem:
             json.dump(data, file, indent=2)
 
 
-#=========================  Main Operation Functions =========================
+#=========================  Part Operation Functions =========================
     def addPart(self):
         """Adds a new part to the inventory system."""
         partModel = mandateStrInput("Enter part model:").upper()
@@ -324,6 +326,7 @@ class inventorySystem:
                 type_print(f"Part {del_part} removed.")
             else:
                 type_print("Deletion cancelled.")
+            self.saveData(self.file_path)
 
     def updatePart(self):
         """Update part information in the inventory system."""
@@ -348,8 +351,10 @@ class inventorySystem:
 
             new_manufacturer = optionalStrInput(f"Enter new manufacturer (current: {part.manufacturer}):")
             if new_manufacturer is not None:
-                return # placeholder
+                part.manufacturer = new_manufacturer
+            self.saveData(self.file_path)
 
+#==========================  Machine Operation Functions =========================
 
     def addMachine(self):
             newMachineName = mandateStrInput("Enter the name of the machine you wish to add")
@@ -367,7 +372,8 @@ class inventorySystem:
                 machineLocation = self.choose_room()
                 if machineLocation == 'QUIT': return
                 if machineLocation is None: 
-                    type_print("No options available to choose from\n")
+                    type_print("No options available to choose from, add a room first\n")
+                    pause_for_user()
                 machineDescription = optionalStrInput('Enter the description of machine')
                 if machineDescription is None: return
             
@@ -414,13 +420,95 @@ class inventorySystem:
             partQuantity = validateNumInput()
             type_print(f"Adding {partQuantity} - {partChoice.modelNumber} to {machineChoice.machineName}")
             machineChoice.part_contained_ID[partChoice.partID] = partQuantity
-
+        self.saveData(self.file_path)
     def viewMachineList(self):
         """Displays the list of machines in the inventory system."""
         if not self.machineList:
             type_print("No machines in the inventory.\n", self.typespeed)
             return
-        print("Machine List:")
         for machineID, machine in self.machineList.items():
-            print(f"ID: {machineID}, Name: {machine.machineName}, Description: {machine.machineDescription}, Location: {machine.machineLocation}")
+            print(f"ID: {machineID}, Name: {machine.machineName}, Description: {machine.machineDescription}, Room Location: {machine.machineLocation}")
+        pause_for_user()
+
+
+
+#=========================  Room Operation Functions =========================
+
+
+
+#=========================  Category Operation Functions =========================
+
+
+    def addCategory(self):
+        """Adds a new category to the inventory system."""
+        newCategoryName = mandateStrInput("Enter the name of the category you wish to add")
+        if newCategoryName is None:
+            return
+        existingCategory = self.getCategoryByName(newCategoryName)
+        if existingCategory is not None:
+            type_print(f'Category with name {newCategoryName} already exists')
+            return
+        if userInputConfirm(f"Confirm you would like to add {newCategoryName} to inventory") is False:
+            return
+        else:
+            type_print(f'Adding new category with name {newCategoryName}')
+            newCategoryID = self.assignCategoryKey()
+            newCategoryDescription = optionalStrInput('Enter the description of category')
+            specFields = []
+            print("Enter the specification fields for this category. Type 'done' when finished.")
+            while True:
+                input = mandateStrInput("Enter a specification field (or type 'done' to finish):")
+                if normalize_text(input) == 'DONE':
+                    break
+                specFields.append(input)
+            
+        new_category = categories(
+            categoryID = newCategoryID,
+            categoryName = newCategoryName,
+            categoryDescription = newCategoryDescription,
+            specList = specFields
+        )
+        self.categoriesList[newCategoryID] = new_category
+        self.saveData(self.file_path)
+        type_print(f'Category: {newCategoryName} with ID: { newCategoryID} added sucessfully')
+
+
+    def removeCategory(self, categoryChoice):
+        if not self.categoriesList:
+            type_print("No categories exists in list yet, please add a category first")
+            return
+            
+        if categoryChoice is None: return
+        else:
+            delSelect = userInputConfirm(f"Are you sure you want to delete {categoryChoice}?")
+            if delSelect:
+                self.categoriesList.pop(categoryChoice, None)
+                self.saveData(self.file_path)
+                type_print(f'Category: {categoryChoice} removed.')
+            else:
+                type_print("Deletion cancelled.")
+
+    def display_categories(self):
+        """Displays the list of categories in the inventory system."""
+        if not self.categoriesList:
+            type_print("No categories in the inventory.\n", self.typespeed)
+            return
+        categoryChoice = self.choose_category()
+        if categoryChoice is None:
+            return
+        else:
+            type_print(f"ID: {categoryChoice.categoryID}, Name: {categoryChoice.categoryName}, Description: {categoryChoice.categoryDescription}, Specs: {', '.join(categoryChoice.specList)}", speed = 0.005)
+            pause_for_user()
+            type_print(f"Parts in this category: {', '.join(categoryChoice.partList)}", speed = 0.005)
+            pause_for_user()
+            userChoice = userInputConfirm("Would you like to update this category? (Y/N)")
+            if userChoice:
+                new_name = optionalStrInput(f"Enter new name (current: {categoryChoice.categoryName}):")
+                if new_name is not None:
+                    categoryChoice.categoryName = new_name
+
+                new_description = optionalStrInput(f"Enter new description (current: {categoryChoice.categoryDescription}):")
+                if new_description is not None:
+                    categoryChoice.categoryDescription = new_description
+                self.saveData(self.file_path)
 

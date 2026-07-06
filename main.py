@@ -102,18 +102,11 @@ def machineMenu(system):
         if machineChoice is None:
             type_print("No machine selected. Returning to machine menu.", typeSpeed)
             return
-        else: update_machine(system, machineChoice)  # Call the update_machine function with the selected machine
-    def add_machine():
-        """Adds a new machine to the inventory system."""
-        type_print("Adding a new machine...", typeSpeed)
-
-    def remove_machine():
-        """Removes a machine from the inventory system."""
-        type_print("Removing a machine...", typeSpeed)
+        else: update_machine_menu(system, machineChoice)  # Call the update_machine_menu function with the selected machine
 
 
     while True:
-        type_print('=' * 10 + "Machine Menu" + '=' * 10, typeSpeed)
+        print_header("Machine Menu")
         print("""
 Select one of the following options:
 1. Add Machine 
@@ -139,16 +132,16 @@ Select one of the following options:
             if choose_machine is None:
                 type_print("No machine selected. Returning to machine menu.", typeSpeed)
                 continue
-            update_machine(system, choose_machine)
+            update_machine_menu(system, choose_machine)
         elif userInput.strip() == '5':
             return  # Exit the machine menu and return to the main menu
         else:
             type_print("Invalid operation please try again", typeSpeed)
 
-    def update_machine(system, machineChoice):
+def update_machine_menu(system, machineChoice):
         """Updates the details of an existing machine in the inventory system."""
         while True:
-            type_print('=' * 10 + "Update Machine Menu" + '=' * 10, typeSpeed)
+            print_header(f"Update Machine: {machineChoice.machineName}", speed=0.005)
             print("""
 Select one of the following options:
 1. Update machine name
@@ -156,7 +149,7 @@ Select one of the following options:
 3. Update machine parts list
 4. Update machine description
 5. View machine part list
-5. Return to machine menu                      
+6. Return to machine menu                      
 """)
             
             userInput = input(">: ")
@@ -175,8 +168,8 @@ Select one of the following options:
                 input("Press Enter to return to the update machine menu...")
             elif userInput.strip() == '6':
                 return  # Exit the update machine menu and return to the machine menu
-            else: type_print("Invalid option please try again")
-
+            else: 
+                type_print("Invalid option please try again")
 
 def reportMenu():
     print("Report Menu")
@@ -189,12 +182,54 @@ def specMenu():
 
 
 def categoriesMenu():
-    pass
+    print_header("Categories Menu")
+    print("""
+Select one of the following options:
+1. Add Category
+2. Remove Category
+3. View Category List
+4. Update Category
+5. Back to Main Menu
+""")
+    userInput = input(">: ")
+    if userInput.strip() == '1':
+        print("Add Category")
+        system.addCategory()
+    elif userInput.strip() == '2':
+        print("Remove Category")
+        system.removeCategory()
+    elif userInput.strip() == '3':
+        print("View Category List")
+    elif userInput.strip() == '4':
+        print("Update Category")
+    elif userInput.strip() == '5':
+        return  # Exit the categories menu and return to the main menu
+    else:
+        print("Invalid operation please try again")
 
-
-
-
-
+def updateCategoryMenu():
+    print_header("Update Category Menu")
+    print("""
+Select one of the following options:)
+1. Update category name
+2. Update category description
+3. View category part list
+4. Update category spec list
+5. Return to categories menu
+""")
+    userInput = input(">: ")
+    if userInput.strip() == '1':
+        print("Update category name")
+    elif userInput.strip() == '2':
+        print("Update category description")
+    elif userInput.strip() == '3':
+        print("View category part list")
+    elif userInput.strip() == '4':
+        print("Update category spec list")
+    elif userInput.strip() == '5':
+        return  # Exit the update category menu and return to the categories menu
+    else:
+        print("Invalid operation please try again")
 
 
 #=========================  Main Program Execution=========================

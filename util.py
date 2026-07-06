@@ -93,10 +93,10 @@ def userInputConfirm(printText):
             continue
 
 
-def print_header(title: str, speed: float = 0.01) -> None:
-    type_print("\n" + "=" * 72, speed)
-    type_print(title, speed)
-    type_print("=" * 72, speed)
+def print_header(title: str) -> None:
+    print("\n" + "=" * 72)
+    print(title)
+    print("=" * 72)
 
 
 def print_table(headers: List[str], rows: List[List[str]]) -> None:
@@ -117,3 +117,7 @@ def print_table(headers: List[str], rows: List[List[str]]) -> None:
     for row in rows:
         print(" | ".join(str(row[i]).ljust(widths[i]) for i in range(len(headers))))
 
+
+def pause_for_user() -> None:
+    """Pauses the program until the user presses Enter."""
+    input("\nPress Enter to continue...")
