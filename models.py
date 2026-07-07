@@ -55,11 +55,16 @@ class Parts():
     @classmethod
     def create_empty(cls):
         return cls(
-            partID=None,
+            partID='',
             partName="",
             partDescription="",
             modelNumber="",
             manufacturer="",
+            location="",
+            notes="",
+            category="",
+            specs={},
+            machineID={},
             stock={"new": 0, "used": 0, "installed": 0}
         )
 
@@ -72,14 +77,14 @@ class Parts():
         if new_quantity < 0:
             type_print("Quantity cannot be negative. Setting quantity to 0.")
             new_quantity = 0
-        self.quantity = new_quantity
+        self.stock["new"] = new_quantity
 
     def usedQuantityUpdate(self, new_used_quantity):
         """Updates the used quantity of the part."""
         if new_used_quantity < 0:
             type_print("Used quantity cannot be negative. Setting used quantity to 0.")
             new_used_quantity = 0
-        self.usedQuantity = new_used_quantity
+        self.stock["used"] = new_used_quantity
 
     def descriptionUpdate(self, new_description):
         """Updates the description of the part."""
@@ -130,10 +135,9 @@ class Parts():
             return
         self.category = new_category
     
-    @staticmethod
     def isStockLow(self, threshold):
         """Checks if the part's quantity is below the specified threshold."""
-        return self.quantity < threshold
+        return self.total_quantity() < threshold
     
     @staticmethod
     def validateInput(self, input_value):
@@ -171,34 +175,46 @@ class Machine:
             part_contained_ID=data.get('part_contained_ID', {})
         )
     
-    def partTable(self, partsList):
-        """Returns a string table showing each part model and quantity in this machine."""
+    def partTable(self, partsList, categoriesList=None):
+        """Returns a string table showing installed parts and their stock breakdown."""
 
         if not self.part_contained_ID:
             return "No parts assigned to this machine."
 
         lines = []
 
-        header = f"{'Part Model':<20} {'Quantity':>10}"
+        header = f"{'Part ID':<10} {'Part Model':<18} {'Category':<18} {'On Machine':>10} {'New':>8} {'Used':>8} {'Installed':>10} {'Total':>8}"
         separator = "-" * len(header)
 
         lines.append(header)
         lines.append(separator)
 
         for partID, quantity in self.part_contained_ID.items():
-            part = None
-
-            for p in partsList.values():
-                if p.partID == partID:
-                    part = p
-                    break
+            part = partsList.get(partID)
 
             if part is not None:
                 model = part.modelNumber
+                category_value = part.category
+                if categoriesList:
+                    category = categoriesList.get(category_value)
+                    if category is not None:
+                        category_value = category.categoryName
+                stock_new = part.stock.get('new', 0)
+                stock_used = part.stock.get('used', 0)
+                stock_installed = part.stock.get('installed', 0)
+                stock_total = part.total_quantity()
             else:
                 model = f"Unknown Part ID {partID}"
+                category_value = "Unknown"
+                stock_new = 0
+                stock_used = 0
+                stock_installed = 0
+                stock_total = 0
 
-            lines.append(f"{model:<20} {quantity:>10}")
+            lines.append(
+                f"{partID:<10} {model:<18} {str(category_value):<18} {quantity:>10} "
+                f"{stock_new:>8} {stock_used:>8} {stock_installed:>10} {stock_total:>8}"
+            )
 
         return "\n".join(lines)
     
@@ -258,13 +274,38 @@ class Room:
         self.roomDescription = new_description
 
 
+@dataclass
+class UserAccount:
+    username: str
+    password_hash: str
+    role: str
+    must_change_password: bool = False
+
+    def to_dict(self):
+        return {
+            'username': self.username,
+            'password_hash': self.password_hash,
+            'role': self.role,
+            'must_change_password': self.must_change_password,
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            username=data.get('username', ''),
+            password_hash=data.get('password_hash', ''),
+            role=data.get('role', 'viewer'),
+            must_change_password=bool(data.get('must_change_password', False)),
+        )
+
+
 
 @dataclass
 class categories:
     categoryID: str
     categoryName: str
     categoryDescription: str
-    specList = []
+    specList: list = field(default_factory=list)
 
     def to_dict(self):
         return {

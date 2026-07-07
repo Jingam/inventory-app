@@ -1,19 +1,93 @@
 {
-  "parts": {},
+  "parts": {
+    "P020": {
+      "partID": "P020",
+      "partName": "Coupler",
+      "partDescription": "Flexible coupler",
+      "modelNumber": "CP-20",
+      "manufacturer": "Acme",
+      "stock": {
+        "new": 1,
+        "used": 1,
+        "installed": 7
+      },
+      "location": "A1",
+      "notes": "",
+      "category": "",
+      "specs": {},
+      "machineID": {
+        "M001": 7
+      }
+    },
+    "P021": {
+      "partID": "P021",
+      "partName": "apd",
+      "partDescription": null,
+      "modelNumber": "MC 12",
+      "manufacturer": "LS",
+      "stock": {
+        "new": 0,
+        "used": 0,
+        "installed": 2
+      },
+      "location": null,
+      "notes": null,
+      "category": "C001",
+      "specs": {},
+      "machineID": {
+        "M001": 2
+      }
+    }
+  },
   "machines": {
     "M001": {
       "machineID": "M001",
       "machineName": "VD 3",
-      "machineDescription": "awd",
-      "machineLocation": null
-    },
-    "M002": {
-      "machineID": "M002",
-      "machineName": "VD 2",
-      "machineDescription": "Vaccum Dryer #3",
-      "machineLocation": null
+      "machineDescription": "",
+      "machineLocation": "R001",
+      "part_contained_ID": {
+        "P020": 7,
+        "P021": 2
+      }
     }
   },
-  "rooms": {},
-  "categories": {}
+  "rooms": {
+    "R001": {
+      "roomID": "R001",
+      "roomName": "Dry Room",
+      "roomDescription": null
+    }
+  },
+  "categories": {
+    "C001": {
+      "categoryID": "C001",
+      "categoryName": "Contactor",
+      "categoryDescription": null,
+      "specList": [
+        "Aux Contact",
+        "Pole",
+        "Amp",
+        "Voltage"
+      ]
+    }
+  },
+  "users": {
+    "admin": {
+      "username": "admin",
+      "password_hash": "054343df400ba6a98613eb6d23814b6f$aba4d2c74c081f12ad92f13c1963f7b3bafbcab7f909d8dbebc64d28288bb250",
+      "role": "admin",
+      "must_change_password": false
+    }
+  },
+  "report_logs": [
+    "[2026-07-06 23:17:06] SYSTEM: Created default admin account.",
+    "[2026-07-06 23:17:06] TECHNICIAN: Adjusted new stock for P020 by -2.",
+    "[2026-07-06 23:21:54] admin: Changed password.",
+    "[2026-07-06 23:23:27] MANAGER: Added machine M001 (VD 3).",
+    "[2026-07-06 23:23:56] ADMIN: Installed 2x P020 to M001 from new stock.",
+    "[2026-07-06 23:24:40] ADMIN: Baseline loaded 5x P020 on M001.",
+    "[2026-07-06 23:27:03] MANAGER: Added part P021 (MC 12).",
+    "[2026-07-06 23:27:43] ADMIN: Adjusted new stock for P021 by -2.",
+    "[2026-07-06 23:27:57] ADMIN: Installed 2x P021 to M001 from new stock."
+  ]
 }

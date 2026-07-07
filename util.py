@@ -45,8 +45,7 @@ def validateNumInput():
     except ValueError:
         type_print("Quantity must be a number. Setting quantity to 0.")
         quantity = 0
-    else: 
-        return quantity_input
+    return quantity
     
 def mandateStrInput(printText):
     while True:
@@ -85,8 +84,10 @@ def userInputConfirm(printText):
     while True:
         userInput = input(f'{printText} (Enter Y or N)\n>:')
         if userInput.upper() == 'Y':
+            print()
             return True
         elif userInput.upper() == 'N':
+            print()
             return False
         else:
             type_print("Please enter 'Y' or 'N'", 0.01)
@@ -97,6 +98,14 @@ def print_header(title: str) -> None:
     print("\n" + "=" * 72)
     print(title)
     print("=" * 72)
+
+
+def show_menu_screen(title: str, subtitle: Optional[str] = None) -> None:
+    print()
+    print_header(title)
+    if subtitle:
+        print(subtitle)
+    print()
 
 
 def print_table(headers: List[str], rows: List[List[str]]) -> None:
@@ -121,3 +130,22 @@ def print_table(headers: List[str], rows: List[List[str]]) -> None:
 def pause_for_user() -> None:
     """Pauses the program until the user presses Enter."""
     input("\nPress Enter to continue...")
+
+
+def choose_index_or_quit(total_items: int, prompt: str = "Choose an item number or type quit to return:\n>: ") -> Optional[int]:
+    """Prompts user to select a 1-based item index or quit; returns 0-based index or None."""
+    choice = input(prompt).strip()
+    if choice.lower() == 'quit':
+        return None
+    if not choice.isdigit():
+        type_print('Invalid choice.', 0.01)
+        pause_for_user()
+        return None
+
+    index = int(choice) - 1
+    if index < 0 or index >= total_items:
+        type_print('Choice out of range.', 0.01)
+        pause_for_user()
+        return None
+
+    return index
