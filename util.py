@@ -149,3 +149,4 @@ def choose_index_or_quit(total_items: int, prompt: str = "Choose an item number 
         return None
 
     return index
+

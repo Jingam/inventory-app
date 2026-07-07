@@ -1,4 +1,8 @@
 import json
+import base64
+import hashlib
+import hmac
+import os
 from datetime import datetime
 
 from auth import hash_password, is_valid_role, normalize_role, verify_password
@@ -8,6 +12,10 @@ from util import *
 #==========================  Main Inventory System Class =========================
 class inventorySystem:
     typespeed = 0.02
+    DATA_KEY_ENV = 'INVENTORY_DATA_KEY'
+    DATA_FORMAT_VERSION = 'invsys-v1'
+    _DATA_KDF_SALT = b'inventory-app-data-salt-v1'
+    _DATA_KEY_FALLBACK = 'inventory-app-dev-key'
     ACTION_PERMISSIONS = {
         'manage_users': {'admin'},
         'view_reports': {'admin', 'manager'},
@@ -565,6 +573,79 @@ class inventorySystem:
 
     def getRoomMachineList(self, roomID):
         return self.roomMachineTable(roomID)
+
+    def _get_data_secret(self):
+        secret = os.environ.get(self.DATA_KEY_ENV, '').strip()
+        if secret:
+            return secret
+        return self._DATA_KEY_FALLBACK
+
+    def _derive_data_keys(self):
+        secret = self._get_data_secret().encode('utf-8')
+        key_material = hashlib.pbkdf2_hmac(
+            'sha256',
+            secret,
+            self._DATA_KDF_SALT,
+            200_000,
+            dklen=64,
+        )
+        return key_material[:32], key_material[32:]
+
+    def _stream_xor(self, payload: bytes, encryption_key: bytes, nonce: bytes):
+        output = bytearray(len(payload))
+        offset = 0
+        counter = 0
+
+        while offset < len(payload):
+            stream_block = hashlib.sha256(
+                encryption_key + nonce + counter.to_bytes(8, 'big')
+            ).digest()
+            block_len = min(32, len(payload) - offset)
+
+            for i in range(block_len):
+                output[offset + i] = payload[offset + i] ^ stream_block[i]
+
+            offset += block_len
+            counter += 1
+
+        return bytes(output)
+
+    def _encrypt_payload_dict(self, data: dict):
+        encryption_key, mac_key = self._derive_data_keys()
+        plaintext = json.dumps(data, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+        nonce = os.urandom(16)
+        ciphertext = self._stream_xor(plaintext, encryption_key, nonce)
+        tag = hmac.new(mac_key, nonce + ciphertext, hashlib.sha256).digest()
+
+        return {
+            '__enc__': self.DATA_FORMAT_VERSION,
+            'kdf': 'pbkdf2-sha256',
+            'iter': 200000,
+            'nonce': base64.b64encode(nonce).decode('ascii'),
+            'ciphertext': base64.b64encode(ciphertext).decode('ascii'),
+            'mac': base64.b64encode(tag).decode('ascii'),
+        }
+
+    def _decrypt_payload_dict(self, encrypted_data: dict):
+        encryption_key, mac_key = self._derive_data_keys()
+
+        try:
+            nonce = base64.b64decode(encrypted_data['nonce'])
+            ciphertext = base64.b64decode(encrypted_data['ciphertext'])
+            provided_tag = base64.b64decode(encrypted_data['mac'])
+        except (KeyError, ValueError, TypeError) as error:
+            raise ValueError('Encrypted data payload is invalid.') from error
+
+        expected_tag = hmac.new(mac_key, nonce + ciphertext, hashlib.sha256).digest()
+        if not hmac.compare_digest(expected_tag, provided_tag):
+            raise ValueError('Encrypted data verification failed. Wrong key or tampered file.')
+
+        plaintext = self._stream_xor(ciphertext, encryption_key, nonce)
+
+        try:
+            return json.loads(plaintext.decode('utf-8'))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise ValueError('Encrypted payload could not be decoded.') from error
     
 
 #=========================  Data Persistence Functions =========================
@@ -574,8 +655,13 @@ class inventorySystem:
         """Loads data from the JSON file into the inventory system."""
         self.file_path = file_path
         try:
-            with open(file_path, 'r') as file:
-                data = json.load(file)
+            with open(file_path, 'r', encoding='utf-8') as file:
+                raw_data = json.load(file)
+
+            if isinstance(raw_data, dict) and raw_data.get('__enc__') == self.DATA_FORMAT_VERSION:
+                data = self._decrypt_payload_dict(raw_data)
+            else:
+                data = raw_data
 
             self.partsList.clear()
             self.machineList.clear()
@@ -634,6 +720,8 @@ class inventorySystem:
             print("Data file not found. Starting with an empty inventory.")
         except json.JSONDecodeError:
             print("Error decoding JSON data. Starting with an empty inventory.")
+        except ValueError as error:
+            print(f"Error loading encrypted data: {error}")
 
     def saveData(self, file_path='inventory_data.json'):
         """Saves data from the inventory system to the JSON file."""
@@ -647,8 +735,10 @@ class inventorySystem:
             'users': {username: user.to_dict() for username, user in self.users.items()},
             'report_logs': self.reportLogs,
         }
+
+        encrypted_payload = self._encrypt_payload_dict(data)
         with open(file_path, 'w', encoding='utf-8') as file:
-            json.dump(data, file, indent=2)
+            json.dump(encrypted_payload, file, indent=2)
 
 
 #=========================  Part Operation Functions =========================
@@ -1278,4 +1368,5 @@ class inventorySystem:
                 if new_description is not None:
                     categoryChoice.categoryDescription = new_description
                 self.saveData(self.file_path)
-
+                # Update spec list
+                
