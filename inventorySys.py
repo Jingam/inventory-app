@@ -1,5 +1,6 @@
 import json
 from json.tool import main
+from platform import machine
 
 from models import *
 from util import *
@@ -154,7 +155,10 @@ class inventorySystem:
             obj_name = getattr(obj, name_field)
             print(f"{index}. {obj_id} - {obj_name}")
 
-        choice = input("Choose an item number: ")
+        choice = input("Choose an item number or type quit to return: ")
+
+        if choice.lower() == "quit":
+            return None
 
         if not choice.isdigit():
             print("Invalid choice.")
@@ -216,8 +220,8 @@ class inventorySystem:
 
             parts_data = data.get('parts', data.get('partsList', {}))
             machines_data = data.get('machines', data.get('machineList', {}))
-            rooms_data = data.get('rooms', data.get('roomList', []))
-            categories_data = data.get('categories', data.get('categoriesList', []))
+            rooms_data = data.get('rooms', data.get('roomList', {}))
+            categories_data = data.get('categories', data.get('categoriesList', {}))
 
             if isinstance(parts_data, dict):
                 for part_id, part_data in parts_data.items():
@@ -300,7 +304,7 @@ class inventorySystem:
                 partDescription=partDescription,
                 modelNumber=partModel,
                 manufacturer=manufacturer,
-                quantity=quantity,
+                stock={"new": quantity, "used": 0, "installed": 0},
                 location=location,
                 notes=notes,
                 category=category,
@@ -330,18 +334,19 @@ class inventorySystem:
                 type_print("Deletion cancelled.")
             self.saveData(self.file_path)
 
-    def updatePart(self):
+    def add_stock(self, part, condition, amount):
+        part.stock[condition] += amount
+        self.saveData(self.file_path)
+
+    def updatePart(self, part):
         """Update part information in the inventory system."""
         while True:
             if not self.partsList:
                 type_print("No parts exists in list yet, please enter part first")
                 return
-            type_print('Select part ID from following list')
-            update_part = self.choose_part()
-            if update_part is None: return
+            if part is None: return
 
-            type_print(f"Updating part {update_part}. Please enter new values or leave blank to keep current value.")
-            part = self.partsList[update_part]
+            type_print(f"Updating part {part.partID}. Please enter new values or leave blank to keep current value.")
 
             new_name = optionalStrInput(f"Enter new name (current: {part.partName}):")
             if new_name is not None:
@@ -355,6 +360,31 @@ class inventorySystem:
             if new_manufacturer is not None:
                 part.manufacturer = new_manufacturer
             self.saveData(self.file_path)
+
+    def viewPartList(self):
+        """Displays a list of all parts in the inventory system."""
+        if not self.partsList:
+            type_print("No parts in the inventory.\n", self.typespeed)
+            return
+
+        partChoice = self.choose_part()
+        if partChoice is None:
+            return
+        else:
+            type_print(f"ID: {partChoice.partID}", self.typespeed)
+            type_print(f"Name: {partChoice.partName}", self.typespeed)
+            type_print(f"Description: {partChoice.partDescription}", self.typespeed)
+            type_print(f"Model Number: {partChoice.modelNumber}", self.typespeed)
+            type_print(f"Manufacturer: {partChoice.manufacturer}", self.typespeed)
+            type_print(f"Quantity (New): {partChoice.stock.get('new', 0)}", self.typespeed)
+            type_print(f"Quantity (Used): {partChoice.stock.get('used', 0)}", self.typespeed)
+            type_print(f"Quantity (Installed): {partChoice.stock.get('installed', 0)}", self.typespeed)
+            type_print(f"Location: {partChoice.location}", self.typespeed)
+            type_print(f"Notes: {partChoice.notes}", self.typespeed)
+            type_print(f"Category: {partChoice.category}\n", self.typespeed)
+        userChoice = userInputConfirm("Would you like to update this part?")
+        if userChoice:
+            self.updatePart(partChoice)
 
     def viewPartListTable(self, partsList):
         """Returns a string table showing each part model and quantity"""
@@ -389,35 +419,50 @@ class inventorySystem:
 #==========================  Machine Operation Functions =========================
 
     def addMachine(self):
-            newMachineName = mandateStrInput("Enter the name of the machine you wish to add")
-            if newMachineName is None:
-                return
-            existingMachine = self.getMachineByName(newMachineName)
-            if existingMachine is not None:
-                type_print(f'Machine with name {newMachineName} already exists')
-                return
-            if userInputConfirm(f"Confirm you would like to add {newMachineName} to inventory") is False:
-                return
-            else:
-                type_print(f'Adding new machine with name {newMachineName}')
-                machineID = self.assignMachineKey()
-                machineLocation = self.choose_room()
-                if machineLocation == 'QUIT': return
-                if machineLocation is None: 
-                    type_print("No options available to choose from, add a room first\n")
-                    pause_for_user()
-                machineDescription = optionalStrInput('Enter the description of machine')
-                if machineDescription is None: return
-            
-            new_machine = Machine(
-                machineID = machineID,
-                machineName = newMachineName,
-                machineLocation = machineLocation,
-                machineDescription = machineDescription
-            )
-            self.machineList[machineID] = new_machine
-            self.saveData(self.file_path)
-            type_print(f'Machine: {newMachineName} with ID: {machineID} at {machineLocation} added sucessfully')
+        newMachineName = mandateStrInput("Enter the name of the machine you wish to add")
+        if newMachineName == 'QUIT':
+            return
+
+        existingMachine = self.getMachineByName(newMachineName)
+        if existingMachine is not None:
+            type_print(f"Machine with name {newMachineName} already exists")
+            return
+
+        if userInputConfirm(f"Confirm you would like to add {newMachineName} to inventory") is False:
+            return
+
+        if not self.roomList:
+            type_print("No rooms available. Add a room first.")
+            pause_for_user()
+            return
+
+        type_print(f"Adding new machine with name {newMachineName}")
+
+        machineID = self.assignMachineKey()
+
+        roomChoice = self.choose_room()
+        if roomChoice is None:
+            type_print("No room selected. Machine was not added.")
+            return
+
+        machineDescription = optionalStrInput("Enter the description of machine")
+        if machineDescription == 'quit':
+            return
+
+        new_machine = Machine(
+            machineID=machineID,
+            machineName=newMachineName,
+            machineLocation=roomChoice.roomID,  # store room ID only
+            machineDescription=machineDescription or ''
+        )
+
+        self.machineList[machineID] = new_machine
+        self.saveData(self.file_path)
+
+        type_print(
+            f"Machine: {newMachineName} with ID: {machineID} "
+            f"added to room {roomChoice.roomName} successfully"
+    )
             
 
 
@@ -453,22 +498,25 @@ class inventorySystem:
         else:
             partQuantity = validateNumInput()
             type_print(f"Adding {partQuantity} - {partChoice.modelNumber} to {machineChoice.machineName}")
-            if partChoice.usedQuantity == 0:
-                partChoice.usedQuantityUpdate(partQuantity)
-            else:
-                partChoice.usedQuantityUpdate(partChoice.usedQuantity + partQuantity)
+            partChoice.stock['installed'] += partQuantity
             machineChoice.part_contained_ID[partChoice.partID] = partQuantity
         self.saveData(self.file_path)
 
 
     def viewMachineList(self):
-        """Displays the list of machines in the inventory system."""
-        if not self.machineList:
-            type_print("No machines in the inventory.\n", self.typespeed)
-            return
-        for machineID, machine in self.machineList.items():
-            print(f"ID: {machineID}, Name: {machine.machineName}, Description: {machine.machineDescription}, Room Location: {machine.machineLocation}, Part Count: {len(machine.part_contained_ID)}")
-        pause_for_user()
+        machine = self.choose_machine()
+
+        if machine is None:
+            return None
+
+        print(f"\nID: {machine.machineID}")
+        print(f"Name: {machine.machineName}")
+        print(f"Location: {machine.machineLocation}")
+        print(f"Description: {machine.machineDescription}")
+        print("\nParts:")
+        print(machine.partTable(self.partsList))
+
+        return machine
 
     
 #=========================  Room Operation Functions =========================
@@ -512,27 +560,88 @@ class inventorySystem:
                 type_print(f'Room: {roomChoice} removed.')
             else:
                 type_print("Deletion cancelled.")
+        self.saveData(self.file_path)
 
-    def updateRoom(self, machineID, new_room):
-        """Updates the room of a specific machine in the inventory system."""
-        if machineID in self.machineList:
-            self.machineList[machineID].machineLocation = new_room
-        else:
+
+    def updateRoom(self, machineID, newRoomID):
+        """Updates the room ID assigned to a machine."""
+
+        if machineID not in self.machineList:
             type_print(f"Machine ID {machineID} not found in the inventory.")
+            return False
+
+        if newRoomID not in self.roomList:
+            type_print(f"Room ID {newRoomID} not found in the inventory.")
+            return False
+
+        self.machineList[machineID].machineLocation = newRoomID
+        self.saveData(self.file_path)
+        return True
 
     def viewRoomList(self):
-        """Displays the list of rooms in the inventory system."""
+        """Displays rooms and the machines assigned to each room."""
+
         if not self.roomList:
             type_print("No rooms in the inventory.\n", self.typespeed)
             return
+
         for roomID, room in self.roomList.items():
-            for machineID, machine in self.machineList.items():
-                if machine.machineLocation == room.roomName:
-                    room.machine_contained[machineID] = machine
-            print(f"ID: {roomID}, Name: {room.roomName}, Description: {room.roomDescription}, Machine Contained: {', '.join(room.machine_contained.keys()) if room.machine_contained else 'None'}")
+            machines_in_room = [
+                machine for machine in self.machineList.values()
+                if machine.machineLocation == roomID
+            ]
+
+            if machines_in_room:
+                machine_names = ", ".join(
+                    f"{machine.machineID} - {machine.machineName}"
+                    for machine in machines_in_room
+                )
+            else:
+                machine_names = "None"
+
+            print(
+                f"ID: {roomID}, "
+                f"Name: {room.roomName}, "
+                f"Description: {room.roomDescription}, "
+                f"Machines: {machine_names}"
+            )
+
         pause_for_user()
 
 
+    def roomMachineTable(self, roomID):
+        """Returns a string table of machines assigned to a room."""
+
+        if roomID not in self.roomList:
+            return "Room not found."
+
+        machines = [
+            machine for machine in self.machineList.values()
+            if machine.machineLocation == roomID
+        ]
+
+        if not machines:
+            return "No machines assigned to this room."
+
+        lines = []
+        header = f"{'Machine Name':<30} {'Description':<30}"
+        separator = "-" * len(header)
+
+        lines.append(header)
+        lines.append(separator)
+
+        for machine in machines:
+            machine_id = str(machine.machineID or "")
+            machine_name = str(machine.machineName or "")
+            description = str(machine.machineDescription or "")
+
+        lines.append(
+            f"{machine_id:<12} "
+            f"{machine_name:<30} "
+            f"{description:<30}"
+        )
+
+        return "\n".join(lines)
 
 #=========================  Category Operation Functions =========================
 

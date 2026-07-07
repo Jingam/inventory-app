@@ -8,13 +8,16 @@ class Parts():
     partDescription: str
     modelNumber: str 
     manufacturer: str  
-    quantity: int
-    usedQuantity: int
     location: str  
     notes: str  
     category: str  
     specs: dict = field(default_factory=dict) 
-    machineID : dict = field(default_factory=str)
+    machineID : dict = field(default_factory=dict)
+    stock: dict = field(default_factory=lambda: {
+        "new": 0,
+        "used": 0,
+        "installed": 0
+    })
 
     def to_dict(self):
         """Converts the part object into a JSON-serializable dictionary."""
@@ -24,8 +27,7 @@ class Parts():
             'partDescription': self.partDescription,
             'modelNumber': self.modelNumber,
             'manufacturer': self.manufacturer,
-            'quantity': self.quantity,
-            'usedQuantity': self.usedQuantity,
+            'stock': self.stock,
             'location': self.location,
             'notes': self.notes,
             'category': self.category,
@@ -42,8 +44,7 @@ class Parts():
             partDescription=data.get('partDescription', ''),
             modelNumber=data.get('modelNumber', ''),
             manufacturer=data.get('manufacturer', ''),
-            quantity=data.get('quantity', 0),
-            usedQuantity=data.get('usedQuantity', 0),
+            stock=data.get('stock', {"new": 0, "used": 0, "installed": 0}),
             location=data.get('location', ''),
             notes=data.get('notes', ''),
             category=data.get('category', ''),
@@ -59,43 +60,74 @@ class Parts():
             partDescription="",
             modelNumber="",
             manufacturer="",
-            quantity=0
+            stock={"new": 0, "used": 0, "installed": 0}
         )
+
+
+    def total_quantity(self):
+        return self.stock["new"] + self.stock["used"] + self.stock["installed"]
 
     def quantityUpdate(self, new_quantity):
         """Updates the quantity of the part."""
+        if new_quantity < 0:
+            type_print("Quantity cannot be negative. Setting quantity to 0.")
+            new_quantity = 0
         self.quantity = new_quantity
 
     def usedQuantityUpdate(self, new_used_quantity):
         """Updates the used quantity of the part."""
+        if new_used_quantity < 0:
+            type_print("Used quantity cannot be negative. Setting used quantity to 0.")
+            new_used_quantity = 0
         self.usedQuantity = new_used_quantity
 
     def descriptionUpdate(self, new_description):
         """Updates the description of the part."""
+        if new_description == 'QUIT':
+            type_print("Part description update cancelled.")
+            return
         self.partDescription = new_description
     
     def nameUpdate(self, new_name):
         """Updates the name of the part."""
+        if new_name == 'QUIT':
+            type_print("Part name update cancelled.")
+            return
         self.partName = new_name
 
     def modelUpdate(self, new_model):
         """Updates the model number of the part."""
+        if new_model == 'QUIT':
+            type_print("Part model number update cancelled.")
+            return
         self.modelNumber = new_model
 
     def manufacturerUpdate(self, new_manufacturer):
         """Updates the manufacturer of the part."""
+        if new_manufacturer == 'QUIT':
+            type_print("Part manufacturer update cancelled.")
+            return
         self.manufacturer = new_manufacturer
 
     def locationUpdate(self, new_location):
         """Updates the location of the part."""
+        if new_location == 'QUIT':
+            type_print("Part location update cancelled.")
+            return
         self.location = new_location
 
     def notesUpdate(self, new_notes):
         """Updates the notes of the part."""
+        if new_notes == 'QUIT':
+            type_print("Part notes update cancelled.")
+            return
         self.notes = new_notes  
 
     def categoryUpdate(self, new_category):
         """Updates the category of the part."""
+        if new_category == 'QUIT':
+            type_print("Part category update cancelled.")
+            return
         self.category = new_category
     
     @staticmethod
@@ -116,8 +148,8 @@ class Machine:
     machineName: str
     machineDescription: str
     machineLocation: str
-
     part_contained_ID: dict = field(default_factory = dict)
+
     def to_dict(self):
         """Converts the machine object into a JSON-serializable dictionary."""
         return {
@@ -134,7 +166,7 @@ class Machine:
         return cls(
             machineID=data.get('machineID', ''),
             machineName=data.get('machineName', ''),
-            machineDescription=data.get('machineDescription', ''),
+            machineDescription=data.get('machineDescription') or '',
             machineLocation=data.get('machineLocation', ''),
             part_contained_ID=data.get('part_contained_ID', {})
         )
@@ -197,14 +229,12 @@ class Room:
     roomID: str
     roomName: str
     roomDescription: str
-    machine_contained: dict = field(default_factory=str)  # Initialize an empty list to hold machines associated with the room
 
     def to_dict(self):
         return {
             'roomID': self.roomID,
             'roomName': self.roomName,
             'roomDescription': self.roomDescription,
-            'machine_contained': self.machine_contained,
         }
 
     @classmethod
@@ -213,32 +243,20 @@ class Room:
             roomID=data.get('roomID', ''),
             roomName=data.get('roomName', ''),
             roomDescription=data.get('roomDescription', ''),
-            machine_contained=data.get('machine_contained', {})
         )
 
     def updateName(self, new_name):
+        if new_name == 'QUIT':
+            type_print("Room name update cancelled.")
+            return
         self.roomName = new_name
 
     def updateDescription(self, new_description):
+        if new_description == 'QUIT':
+            type_print("Room description update cancelled.")
+            return
         self.roomDescription = new_description
 
-    def machineTable(self):
-        """Returns a string table showing each machine in this room."""
-        if not self.machine_contained:
-            return "No machines assigned to this room."
-
-        lines = []
-
-        header = f"{'Machine ID':<20} {'Machine Name':<30} {'Description':<30}"
-        separator = "-" * len(header)
-
-        lines.append(header)
-        lines.append(separator)
-
-        for machineID, machine in self.machine_contained.items():
-            lines.append(f"{machineID:<20} {machine.machineName:<30} {machine.machineDescription:<30}")
-
-        return "\n".join(lines)
 
 
 @dataclass
@@ -266,9 +284,15 @@ class categories:
         )
     
     def updateName(self, new_name):
+        if new_name == 'QUIT':
+            type_print("Category name update cancelled.")
+            return
         self.categoryName = new_name
 
     def updateDescription(self, new_description):
+        if new_description == 'QUIT':
+            type_print("Category description update cancelled.")
+            return
         self.categoryDescription = new_description
 
     
