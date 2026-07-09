@@ -38,18 +38,27 @@ class Parts():
     @classmethod
     def from_dict(cls, data):
         """Creates a Parts instance from a dictionary."""
+        raw_stock = data.get('stock', {})
+        if not isinstance(raw_stock, dict):
+            raw_stock = {}
+        stock = {
+            "new": int(raw_stock.get("new", 0) or 0),
+            "used": int(raw_stock.get("used", 0) or 0),
+            "installed": int(raw_stock.get("installed", 0) or 0),
+        }
+
         return cls(
             partID=data.get('partID', ''),
-            partName=data.get('partName', ''),
-            partDescription=data.get('partDescription', ''),
-            modelNumber=data.get('modelNumber', ''),
-            manufacturer=data.get('manufacturer', ''),
-            stock=data.get('stock', {"new": 0, "used": 0, "installed": 0}),
-            location=data.get('location', ''),
-            notes=data.get('notes', ''),
-            category=data.get('category', ''),
-            specs=data.get('specs', {}),
-            machineID=data.get('machineID', {})
+            partName=data.get('partName') or '',
+            partDescription=data.get('partDescription') or '',
+            modelNumber=data.get('modelNumber') or '',
+            manufacturer=data.get('manufacturer') or '',
+            stock=stock,
+            location=data.get('location') or '',
+            notes=data.get('notes') or '',
+            category=data.get('category') or '',
+            specs=data.get('specs') if isinstance(data.get('specs'), dict) else {},
+            machineID=data.get('machineID') if isinstance(data.get('machineID'), dict) else {}
         )
 
     @classmethod
@@ -70,7 +79,8 @@ class Parts():
 
 
     def total_quantity(self):
-        return self.stock["new"] + self.stock["used"] + self.stock["installed"]
+        stock = self.stock if isinstance(self.stock, dict) else {}
+        return int(stock.get("new", 0) or 0) + int(stock.get("used", 0) or 0) + int(stock.get("installed", 0) or 0)
 
     def quantityUpdate(self, new_quantity):
         """Updates the quantity of the part."""

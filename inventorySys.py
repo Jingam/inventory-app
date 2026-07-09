@@ -36,6 +36,8 @@ class inventorySystem:
         self.users: dict[str, UserAccount] = {}
         self.reportLogs: list[str] = []
         self.file_path = file_path
+        self._cached_key_secret: str | None = None
+        self._cached_derived_keys: tuple[bytes, bytes] | None = None
         self._ensure_default_admin()
 
 
@@ -46,9 +48,16 @@ class inventorySystem:
         if not existing_items:
             return f"{prefix}001"
 
-        last_key = sorted(existing_items.keys())[-1]
-        last_number = int(last_key[1:])
-        return f"{prefix}{last_number + 1:03d}"
+        max_number = 0
+        for key in existing_items.keys():
+            key_text = str(key)
+            if not key_text.startswith(prefix):
+                continue
+            suffix = key_text[len(prefix):]
+            if suffix.isdigit():
+                max_number = max(max_number, int(suffix))
+
+        return f"{prefix}{max_number + 1:03d}"
 
     def assignPartKey(self):
         """Assigns a unique key for a new part in the inventory system."""
@@ -128,12 +137,19 @@ class inventorySystem:
     
     def searchPart(self, searchTerm):
         """Searches for parts in the inventory system based on a search term."""
+        search_value = (searchTerm or "").strip().lower()
+        if not search_value:
+            return []
+
         results = []
         for part in self.partsList.values():
-            if (searchTerm.lower() in part.partName.lower() or
-                searchTerm.lower() in part.partDescription.lower() or
-                searchTerm.lower() in part.modelNumber.lower() or
-                searchTerm.lower() in part.manufacturer.lower()):
+            if (
+                search_value in (part.partID or "").lower()
+                or search_value in (part.partName or "").lower()
+                or search_value in (part.partDescription or "").lower()
+                or search_value in (part.modelNumber or "").lower()
+                or search_value in (part.manufacturer or "").lower()
+            ):
                 results.append(part)
         return results  # Return a list of matching parts
     
@@ -581,7 +597,11 @@ class inventorySystem:
         return self._DATA_KEY_FALLBACK
 
     def _derive_data_keys(self):
-        secret = self._get_data_secret().encode('utf-8')
+        secret_text = self._get_data_secret()
+        if self._cached_key_secret == secret_text and self._cached_derived_keys is not None:
+            return self._cached_derived_keys
+
+        secret = secret_text.encode('utf-8')
         key_material = hashlib.pbkdf2_hmac(
             'sha256',
             secret,
@@ -589,7 +609,9 @@ class inventorySystem:
             200_000,
             dklen=64,
         )
-        return key_material[:32], key_material[32:]
+        self._cached_key_secret = secret_text
+        self._cached_derived_keys = (key_material[:32], key_material[32:])
+        return self._cached_derived_keys
 
     def _stream_xor(self, payload: bytes, encryption_key: bytes, nonce: bytes):
         output = bytearray(len(payload))
@@ -684,22 +706,30 @@ class inventorySystem:
             if isinstance(parts_data, dict):
                 for part_id, part_data in parts_data.items():
                     part = Parts.from_dict(part_data if isinstance(part_data, dict) else {})
-                    self.partsList[part.partID or part_id] = part
+                    resolved_part_id = part.partID or part_id
+                    part.partID = resolved_part_id
+                    self.partsList[resolved_part_id] = part
 
             if isinstance(machines_data, dict):
                 for machine_id, machine_data in machines_data.items():
                     machine = Machine.from_dict(machine_data if isinstance(machine_data, dict) else {})
-                    self.machineList[machine.machineID or machine_id] = machine
+                    resolved_machine_id = machine.machineID or machine_id
+                    machine.machineID = resolved_machine_id
+                    self.machineList[resolved_machine_id] = machine
 
             if isinstance(rooms_data, dict):
                 for room_id, room_data in rooms_data.items():
                     room = Room.from_dict(room_data if isinstance(room_data, dict) else {})
-                    self.roomList[room.roomID or room_id] = room
+                    resolved_room_id = room.roomID or room_id
+                    room.roomID = resolved_room_id
+                    self.roomList[resolved_room_id] = room
 
             if isinstance(categories_data, dict):
                 for category_id, category_data in categories_data.items():
                     category = categories.from_dict(category_data if isinstance(category_data, dict) else {})
-                    self.categoriesList[category.categoryID or category_id] = category
+                    resolved_category_id = category.categoryID or category_id
+                    category.categoryID = resolved_category_id
+                    self.categoriesList[resolved_category_id] = category
 
             if isinstance(users_data, dict):
                 for username, user_data in users_data.items():
@@ -884,7 +914,6 @@ class inventorySystem:
                 type_print(f"Part {del_part.modelNumber} removed.")
             else:
                 type_print("Deletion cancelled.")
-            self.saveData(self.file_path)
 
     def add_stock(self, part, condition, amount, actor_role='viewer'):
         if not self.require_permission(actor_role, 'update_stock'):
@@ -901,7 +930,7 @@ class inventorySystem:
         self.saveData(self.file_path)
         return True, 'Stock updated.'
 
-    def update_part_field(self, part, field_name, new_value, actor_role='viewer'):
+    def update_part_field(self, part, field_name, new_value, actor_role='viewer', persist=True, sync=True):
         if not self.require_permission(actor_role, 'manage_parts'):
             return False, 'Access denied: only manager or admin can update part details.'
 
@@ -925,11 +954,13 @@ class inventorySystem:
         else:
             return False, 'Invalid part field.'
 
-        self.sync_relationships()
-        self.saveData(self.file_path)
+        if sync:
+            self.sync_relationships()
+        if persist:
+            self.saveData(self.file_path)
         return True, 'Part updated successfully.'
 
-    def update_part_category_details(self, part, category_id, specs, actor_role='viewer'):
+    def update_part_category_details(self, part, category_id, specs, actor_role='viewer', persist=True, sync=True):
         if not self.require_permission(actor_role, 'manage_parts'):
             return False, 'Access denied: only manager or admin can update part details.'
 
@@ -943,11 +974,13 @@ class inventorySystem:
         part.categoryUpdate(resolved_category_id)
         part.specs = specs or {}
 
-        self.sync_relationships()
-        self.saveData(self.file_path)
+        if sync:
+            self.sync_relationships()
+        if persist:
+            self.saveData(self.file_path)
         return True, 'Part category and specs updated successfully.'
 
-    def update_machine_field(self, machine, field_name, new_value, actor_role='viewer'):
+    def update_machine_field(self, machine, field_name, new_value, actor_role='viewer', persist=True):
         if not self.require_permission(actor_role, 'manage_machines'):
             return False, 'Access denied: only manager or admin can update machine details.'
 
@@ -965,7 +998,8 @@ class inventorySystem:
         else:
             return False, 'Invalid machine field.'
 
-        self.saveData(self.file_path)
+        if persist:
+            self.saveData(self.file_path)
         return True, 'Machine updated successfully.'
 
     def viewPartList(self, actor_role='viewer'):

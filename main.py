@@ -796,10 +796,7 @@ def user_accounts_menu(system, current_user):
 
 #=========================  Main Program Execution=========================
 
-system = inventorySystem()
-system.loadData()  # Load data from the JSON file when the program starts
-while True:
-    current_user = login_menu(system)
-    result = mainMenu(system, current_user)
-    if result == 'exit':
-        break
+if __name__ == '__main__':
+    from gui_app import launch_inventory_gui
+
+    launch_inventory_gui()
